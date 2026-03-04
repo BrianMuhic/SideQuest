@@ -1,0 +1,32 @@
+/* Basic link color */
+a {
+	color: $font-color;
+}
+
+/* Button styles */
+.button,
+button {
+	display: inline-block;
+	padding: 0.5rem 1rem;
+	border: 0;
+	background-color: $primary-color;
+	color: white;
+	border-radius: 0.2rem;
+	cursor: pointer;
+	text-decoration: none;
+	font-size: 0.9rem;
+	transition: background-color 0.2s;
+
+	&:hover {
+		background-color: darken($primary-color, 10%);
+	}
+
+	&.cancel {
+		background-color: transparent;
+		color: $primary-color;
+
+		&:hover {
+			background-color: rgba($primary-color, 10%);
+		}
+	}
+}

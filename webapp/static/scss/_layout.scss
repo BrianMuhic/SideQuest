@@ -1,0 +1,105 @@
+/* Global reset */
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+/* Base styles */
+body {
+	font-family: $primary-font;
+	font-size: 1rem;
+	color: $font-color;
+	background-color: $bg-color;
+	padding-top: 7.5rem;
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+}
+
+/* Fixed header */
+header {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	z-index: 1000;
+	background-color: $bg-color;
+}
+
+/* Container */
+.container {
+	width: 100%;
+	max-width: 75rem;
+	margin: 0 auto;
+	padding: 0 1rem;
+}
+
+/* Basic page structure */
+main {
+	background-color: $bg-color;
+	padding: 0.5rem 2rem 1.5rem;
+	flex: 1;
+}
+
+/* Footer */
+footer {
+	background-color: $nav-bg-color;
+	color: $font-color;
+	padding: 1.25rem 1rem;
+	text-align: center;
+	margin-top: auto;
+
+	p {
+		margin: 0.625rem 0;
+		font-size: 0.875rem;
+	}
+
+	a {
+		color: $link-color;
+		text-decoration: none;
+		margin: 0 0.3125rem;
+
+		&:hover {
+			color: $link-hover-color;
+			text-decoration: underline;
+		}
+	}
+
+	.footer-links {
+		margin-bottom: 1rem;
+
+		a {
+			margin: 0;
+			padding: 0 1rem;
+			border-right: 1px solid $secondary-color;
+
+			&:last-child {
+				border-right: none;
+			}
+		}
+	}
+}
+
+/* Images */
+img {
+	max-width: 100%;
+	height: auto;
+}
+
+/* Utility classes */
+.center {
+	text-align: center;
+}
+
+.email-redirect-alert {
+	width: 100%;
+	height: 1rem;
+	line-height: 1rem;
+	font-size: 0.8rem;
+	padding: 0;
+	background-color: #ffafbb;
+	color: black;
+	text-align: center;
+	user-select: none;
+}

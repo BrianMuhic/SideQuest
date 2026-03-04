@@ -1,0 +1,133 @@
+[project]
+name = "SideQuest"
+version = "0.1.0"
+description = ""
+requires-python = "==3.12.*"
+
+## ==================== APP DEPENDENCIES ==================== ##
+dependencies = [
+    # Core WebApp
+    "flask",                    # Web framework
+    "flask-assets",             # Bundling assets for browsers
+    "flask-login",              # User authentication and sessions
+    "flask-mail",               # Email sending functionality
+    "flask-moment",             # Date/time formatting with Moment.js
+    "flask-wtf",                # Forms and CSRF protection
+    "libsass",                  # Sass/SCSS stylesheet compilation
+    "cssmin",                   # CSS minification
+    "rjsmin",                   # JavaScript minification
+    "python-dateutil",          # Date/time parsing and manipulation utilities
+    "python-dotenv",            # Load environment variables from .env files
+    "requests",                 # HTTP client library for external API calls
+
+    # Database
+    "alembic",                  # Database schema migrations for SQLAlchemy
+    "pymysql",                  # Synchronous MySQL database driver
+    "redis",                    # In-memory database for caching and sessions
+    "sqlalchemy-utils",         # Extra SQLAlchemy utilities and data types
+    "sqlalchemy",               # The Python SQL Toolkit and Object Relational Mapper
+
+    # Validation
+    "email_validator",          # Validate email addresses
+    "password-strength",        # Password strength and validation
+    "pydantic",                 # Data validation using Python type hints
+    "pydantic-settings",        # Settings management using Pydantic
+]
+
+[dependency-groups]
+dev = [
+    "ty",                       # Type checking (astral's version of mypy)
+    "pre-commit",               # Git pre-commit formatting (see .pre-commit-config.yaml)
+    "ruff",                     # Formatting and linting
+    "complexipy",               # Code complexity analyzer and cyclomatic complexity checker
+    "coverage",                 # Code coverage measurement and reporting
+
+    # PyTest
+    "py",                       # Common pytest utilities and helpers
+    "pyquery",                  # jQuery-like HTML parsing and manipulation - replaces ugly beautiful soup
+    "pytest",                   # Testing framework
+    "pytest-clarity",           # Enhanced test failure output and diffs
+    "pytest-html",              # Generate HTML test reports
+    "pytest-sugar",             # Prettier test output with progress bars
+    "pytest-xdist",             # Parallel test execution (-n <CPUs>)
+
+    # Type Stubs
+    "types-libsass", 
+    "types-pymysql", 
+    "types-python-dateutil", 
+    "types-requests", 
+    "types-sqlalchemy-utils", 
+]
+
+
+## ==================== ALEMBIC ==================== ##
+[tool.alembic]
+file_template = "%%(year)d%%(month).2d%%(day).2d%%(hour).2d_%%(slug)s"
+prepend_sys_path= [".", "webapp"]
+script_location = "webapp/migrations"
+revision_environment = false
+
+
+## ==================== RUFF ==================== ##
+# https://docs.astral.sh/ruff/settings/
+[tool.ruff]
+src = ["webapp", "tests"]
+indent-width = 4
+line-length = 100
+output-format="grouped"
+
+[tool.ruff.format]
+docstring-code-format = true
+indent-style = "space"
+line-ending = "lf"
+quote-style = "double"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+exclude = []
+select = [      # https://docs.astral.sh/ruff/rules/
+    "E4",       # imports
+    "E7",       # comparisons
+    "E9",       # io errors
+    "F",        # pyflakes
+    "N",        # naming convention
+    "RUF",      # ruff
+    "W1",       # tab indentation
+    "W2",       # whitespace
+]
+ignore = [
+    "RUF010",   # str() to !s conversion
+    "N812",     # lowercase imported as uppercase
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["webapp", "tests"]
+forced-separate = ["webapp", "tests"]
+order-by-type = true
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true
+mypy-init-return = true
+suppress-none-returning = true
+
+
+## ==================== TY (type checking) ==================== ##
+[tool.ty.src]
+exclude = []
+
+[tool.ty.rules]
+unused-type-ignore-comment = "ignore"
+
+
+## ==================== COVERAGE ==================== ##
+[tool.coverage.run]
+source = ["."]
+omit = ["*/migrations/*", "*/tests/*"]
+
+
+## ==================== PYTEST ==================== ##
+[tool.pytest.ini_options]
+addopts = ["--numprocesses=auto"]
+filterwarnings = ["ignore"]
+pythonpath = ["webapp", "tests"]
+testpaths = ["tests"]

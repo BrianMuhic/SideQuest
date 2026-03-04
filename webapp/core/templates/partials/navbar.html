@@ -1,0 +1,46 @@
+{% macro draw_menus(menus) %}
+
+	{% for menu in menus %}
+		{% if menu.hide %}
+			{# do nothing #}
+		{% elif not menu.submenus %}
+			<li>
+				<a class="{{ menu.active_flag }}" href="{{ url_for(menu.endpoint_name, **menu.endpoint_args) }}">
+					{{ menu.name | safe }}
+					{% if menu.icon %}
+						<i class="{{menu.icon}}"></i>
+					{% endif %}
+					{% if menu.image %}
+						<img src="{{menu.image}}" class="navbar-image"/>
+					{% endif %}
+				</a>
+			</li>
+		{% else %}
+			<li class="dropdown">
+				<a class="dropdown-toggle {{ menu.active_flag }}">
+					{{ menu.name }}
+				</a>
+				<div class="dropdown-menu">
+					{% for submenu in menu.submenus %}
+						{% if not submenu.hide %}
+						<a class="dropdown-item" href="{{ url_for(submenu.endpoint_name, **submenu.endpoint_args) }}">
+							{{ submenu.name }}
+						</a>
+						{% endif %}
+					{% endfor %}
+				</div>
+			</li>
+		{% endif %}
+	{% endfor %}
+
+{% endmacro %}
+
+
+<nav class="navbar">
+	<ul class="menu">
+		{{ draw_menus(navbar.left_menus) }}
+	</ul>
+	<ul class="menu">
+		{{ draw_menus(navbar.right_menus) }}
+	</ul>
+</nav>

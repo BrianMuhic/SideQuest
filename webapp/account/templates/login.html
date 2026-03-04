@@ -1,0 +1,17 @@
+{% extends 'partials/base.html' %}
+
+{% block body %}
+
+<form method="post">
+    {{ form.csrf_token }}
+
+    {{ macros.form_field(form.email) }}
+    {{ macros.form_field(form.password) }}
+    
+    <br/>
+
+    {{ macros.field_input(form.submit) }}
+
+</form>
+
+{% endblock %}

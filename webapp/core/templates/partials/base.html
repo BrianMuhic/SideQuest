@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% import "macros.j2" as macros %}
+{% set highlight = '<span class="highlight">*</span>' %}
+
+
+<head>
+	<meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+	<title>{{ title }}</title>
+
+	{{ JSGlue.include() }}
+
+	{% include 'partials/cdn.html' %}
+
+	<link rel="shortcut icon" type="image/x-icon" href="{{ img_url('favicon.ico') }}"/>
+    <link rel="apple-touch-icon" href="{{ img_url('apple-touch-icon.png') }}"/>
+
+	{% assets "scss" %}
+	<link rel=stylesheet type=text/css href="{{ ASSET_URL }}">
+	{% endassets %}
+
+	{% block head %}{% endblock head %}
+
+	{# NOTE: All styles should go in .scss files or temporarily in development.css #}
+    {% block style %}{% endblock style %}
+</head>
+
+<body>
+	<header>
+		{% if mail_redirect %}
+		<div class="email-redirect-alert">
+			Email is redirected to developers
+		</div>
+		{% endif %}
+		{% block header %}{% endblock header %}
+		{% include 'partials/navbar.html' %}
+	</header>
+
+	<main>
+		{% block body %}{% endblock body %}
+	</main>
+
+	<footer>
+		{% block footer %}{% endblock footer %}
+		{% include "partials/footer.html" %}
+	</footer>
+
+	{% assets "js" %}
+	<script src="{{ ASSET_URL }}"></script>
+	{% endassets %}
+
+	{% block script %}{% endblock script %}
+</body>
+
+</html>

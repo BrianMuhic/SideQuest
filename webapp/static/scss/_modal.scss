@@ -1,0 +1,21 @@
+.modal-content {
+    border: 1px solid $primary-color;
+}
+
+.modal-header {
+    background-color: $primary-color;
+    color: $font-color;
+    font-weight: 700;
+
+    button {
+        color: $font-color;
+    }
+}
+
+.modal-body {
+    background-color: black;
+}
+
+.modal-footer {
+    background-color: black;
+}
