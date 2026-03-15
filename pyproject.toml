@@ -1,7 +1,8 @@
 [project]
 name = "SideQuest"
+description = "A Flask website to suggest detours for road trips."
+readme = "README.md"
 version = "0.1.0"
-description = ""
 requires-python = "==3.12.*"
 
 ## ==================== APP DEPENDENCIES ==================== ##
@@ -69,7 +70,7 @@ revision_environment = false
 
 
 ## ==================== RUFF ==================== ##
-# https://docs.astral.sh/ruff/settings/
+# https://docs.astral.sh/ruff/settings
 [tool.ruff]
 src = ["webapp", "tests"]
 indent-width = 4
@@ -83,9 +84,10 @@ line-ending = "lf"
 quote-style = "double"
 skip-magic-trailing-comma = false
 
+# https://docs.astral.sh/ruff/rules
 [tool.ruff.lint]
 exclude = []
-select = [      # https://docs.astral.sh/ruff/rules/
+select = [
     "E4",       # imports
     "E7",       # comparisons
     "E9",       # io errors
@@ -112,11 +114,18 @@ suppress-none-returning = true
 
 
 ## ==================== TY (type checking) ==================== ##
+# https://docs.astral.sh/ty/reference/configuration
+[tool.ty.environment]
+root = [".", "webapp"]
+
+[tool.ty.terminal]
+output-format = "concise"
+
 [tool.ty.src]
 exclude = []
 
+# https://docs.astral.sh/ty/reference/rules
 [tool.ty.rules]
-unused-type-ignore-comment = "ignore"
 
 
 ## ==================== COVERAGE ==================== ##
@@ -127,7 +136,17 @@ omit = ["*/migrations/*", "*/tests/*"]
 
 ## ==================== PYTEST ==================== ##
 [tool.pytest.ini_options]
-addopts = ["--numprocesses=auto"]
 filterwarnings = ["ignore"]
-pythonpath = ["webapp", "tests"]
+pythonpath = [".", "webapp", "tests"]
 testpaths = ["tests"]
+addopts = ["--numprocesses=auto"]
+
+
+## ==================== COMPLEXIPY ==================== ##
+# https://rohaquinlop.github.io/complexipy/#configuration
+[tool.complexipy]
+paths = ["."]
+max-complexity-allowed = 15
+sort = "desc"
+failed = true
+

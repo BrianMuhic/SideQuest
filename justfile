@@ -46,17 +46,16 @@ lint:
 
 # Check type hints with ty
 typehint:
-    uv run ty check --output-format concise
+    uv run ty check
 
-# Check code complexity (complexipy + ruff C901)
+# Check code complexity
 complex:
-    -uv run complexipy
-    uv run ruff check --select C901 --output-format=concise | sort -t'(' -k2 -nr | sed 's/: C901.*is too//g'
+    uv run complexipy
 
 
 # ==================== Testing ==================== #
 
-# Run tests with pytest (parallel)
+# Run tests with pytest
 test:
     uv run pytest
 
@@ -106,3 +105,4 @@ setup: pre-commit-setup
 # Setup pre-commit hooks
 pre-commit-setup:
     @test -f .git/hooks/pre-commit || uv run pre-commit install -f
+
