@@ -30,10 +30,10 @@ class Settings(BaseSettings):
     USER_SESSION_TIMEOUT_MINUTES: int = 60
 
     # Database
-    ENGINE_DATABASE: str = _REQ
-    ENGINE_HOST: str = _REQ
-    ENGINE_USER: str = _REQ
-    ENGINE_PASSWORD: str = _REQ
+    ENGINE_DATABASE: str = "sidequest"
+    ENGINE_HOST: str = "localhost"
+    ENGINE_USER: str = "root"
+    ENGINE_PASSWORD: str = ""
     ENGINE_PORT: int = 3306
     ENGINE_DIALECT: str = "mysql"
     ENGINE_DRIVER: str = "pymysql"

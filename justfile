@@ -69,6 +69,23 @@ test-coverage:
 
 # ==================== Database ==================== #
 
+# Run mariadb via container
+db-container:
+    #!/bin/sh
+    if command -v podman &>/dev/null; then 
+        export CMD="podman"
+    elif command -v docker &>/dev/null; then
+        export CMD="docker"
+    else
+        echo "Cannot find podman or docker"
+        exit 1
+    fi
+    mkdir -p ./local/mysql
+    $CMD run --detach --name mariadb -v ./local/mysql:/var/lib/mysql:Z -p 3306:3306 -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 mariadb:latest
+    echo "MariaDB server started (user='root', password='', port=3306)"
+    echo "To stop the server, run '$CMD rm -f mariadb'"
+    echo "To ensure the database is on the most recent version, run 'just db-upgrade'"
+
 # Create new migration with message (e.g., just db-migrate "add user table")
 db-migrate message:
     uv run alembic revision --autogenerate -m "{{message}}"
