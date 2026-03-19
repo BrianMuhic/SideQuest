@@ -16,6 +16,7 @@ artifact/
 htmlcov/
 logs/
 venv/
+build/
 
 # IDE
 .DS_Store/
