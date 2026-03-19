@@ -78,7 +78,7 @@ def guest_required(func: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(func)
     def decorated_function(*args, **kwargs):
         if get_user():
-            return endpoint.home.redirect()
+            return endpoint.osm_map.redirect()
         return func(*args, **kwargs)
 
     return decorated_function

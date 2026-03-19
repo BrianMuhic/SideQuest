@@ -1,0 +1,30 @@
+{% extends 'partials/base.html' %}
+
+{% block body %}
+
+<div class="login-container">
+    <div class="login-card">
+        <h2> {{ title }} </h2>
+        <form method="post" class="login-form">
+            {{ form.csrf_token }}
+
+            {{ macros.form_field(form.first_name) }}
+            {{ macros.form_field(form.last_name) }}
+
+            {{ macros.form_field(form.email) }}
+            {{ macros.form_field(form.verify_email) }}
+
+            {{ macros.form_field(form.password) }}
+            {{ macros.form_field(form.verify_password) }}
+
+            <div class="form-actions">
+                {{ macros.field_input(form.submit) }}
+            </div>
+        </form>
+        <div class="login-links">
+            <a href="{{ url_for('account.login') }}">Already have an account? Login</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

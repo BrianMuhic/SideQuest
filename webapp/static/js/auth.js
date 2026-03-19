@@ -32,7 +32,6 @@ function authLogout() {
 		type: 'POST',
 		url: '/account/logout',
 	}).done(function() {
-		document.getElementById('user-name').textContent = '';
-		document.body.classList.remove('authenticated');
+		window.location.href = '/';
 	}).fail(ajaxFailure);
 }

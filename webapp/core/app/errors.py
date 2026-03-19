@@ -1,10 +1,11 @@
 from http import HTTPStatus
 
-from flask import Flask, request
+from flask import Flask, redirect, request
 from flask.templating import render_template
 from flask.typing import ResponseReturnValue
 from werkzeug.exceptions import (
     HTTPException,
+    Unauthorized,
 )
 
 from core.service.logger import get_logger
@@ -32,6 +33,10 @@ def handle_http_exception(err: HTTPException) -> ResponseReturnValue:
 
     if not err.description or err.code in (None, HTTPStatus.INTERNAL_SERVER_ERROR):
         return handle_exception(err)
+
+    # Redirect unauthenticated users to login page
+    if isinstance(err, Unauthorized) and request.method == "GET":
+        return redirect("/", code=302)
 
     if err.code != HTTPStatus.NOT_FOUND or request.path not in IGNORE_404:
         message = f"{err.code} {err.name} on {request.method} {request.path}"
