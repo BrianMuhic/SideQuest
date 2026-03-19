@@ -35,3 +35,11 @@ img {
 .center {
 	text-align: center;
 }
+
+/* Auth visibility — toggled by body.authenticated */
+.auth-show { display: none; }
+
+body.authenticated {
+	.auth-show { display: block; }
+	.guest-show { display: none; }
+}

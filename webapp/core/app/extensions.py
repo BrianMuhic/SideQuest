@@ -9,12 +9,15 @@ This might be integrated into the factory, but there are complications with flas
 
 from flask_login import LoginManager
 from flask_mail import Mail
+from flask_wtf.csrf import CSRFProtect
 
 login_manager = LoginManager()
 mail = Mail()
+csrf = CSRFProtect()
 
 
 extensions = (
     login_manager,
     mail,
+    csrf,
 )

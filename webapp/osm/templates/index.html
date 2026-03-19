@@ -2,6 +2,31 @@
 
 {% block body %}
 
+<div class="modal top-right guest-show" id="login-modal">
+	<div class="modal_header">Sign In</div>
+	<div class="modal_body">
+		<form id="login-form">
+			<div class="field">
+				<input type="email" name="email" placeholder="Email" autocomplete="email">
+			</div>
+			<div class="field">
+				<input type="password" name="password" placeholder="Password" autocomplete="current-password">
+			</div>
+			<div class="form-error" id="login-error"></div>
+		</form>
+	</div>
+	<div class="modal_footer">
+		<button onclick="authLogin()">Sign In</button>
+	</div>
+</div>
 
+<div class="modal top-right auth-show" id="user-modal">
+	<div class="modal_header">
+		<span id="user-name">{% if current_user.is_authenticated %}{{ current_user.first_name }}{% endif %}</span>
+	</div>
+	<div class="modal_footer">
+		<button class="cancel" onclick="authLogout()">Sign Out</button>
+	</div>
+</div>
 
 {% endblock %}

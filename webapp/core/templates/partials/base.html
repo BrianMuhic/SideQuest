@@ -20,13 +20,15 @@
 	<link rel=stylesheet type=text/css href="{{ ASSET_URL }}">
 	{% endassets %}
 
+	<meta name="csrf-token" content="{{ csrf_token() }}">
+
 	{% block head %}{% endblock head %}
 
 	{# NOTE: All styles should go in .scss files or temporarily in development.scss #}
     {% block style %}{% endblock style %}
 </head>
 
-<body>
+<body{% if current_user.is_authenticated %} class="authenticated"{% endif %}>
 	<main>
 		{% block body %}{% endblock body %}
 	</main>
