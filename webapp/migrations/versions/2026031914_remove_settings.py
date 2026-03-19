@@ -35,13 +35,13 @@ def downgrade():
         sa.Column(
             "created_date",
             mysql.DATETIME(),
-            server_default=sa.text("utc_timestamp()"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
         sa.Column(
             "modified_date",
             mysql.DATETIME(),
-            server_default=sa.text("utc_timestamp()"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
         sa.Column("id", mysql.INTEGER(display_width=11), autoincrement=True, nullable=False),

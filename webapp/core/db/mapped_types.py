@@ -105,7 +105,7 @@ DateToday = Mapped[
             sa.Date,
             nullable=False,
             default=lambda: datetime.now(timezone.utc).date(),
-            server_default=sa.text("utc_date()"),
+            server_default=sa.text("CURRENT_DATE"),
         ),
     ]
 ]
@@ -120,7 +120,7 @@ DateTimeNow = Mapped[
             _DateTimeUTC,
             nullable=False,
             default=lambda: datetime.now(timezone.utc),
-            server_default=sa.text("utc_timestamp()"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
         ),
     ]
 ]
