@@ -1,14 +1,6 @@
-{% macro date_format(date) -%}
-    {{ moment(date).format(''|date_format_str) if date else '' }}
-{%- endmacro %}
-
-{% macro datetime_format(datetime) -%}
-    {{ moment(datetime).format(''|datetime_format_str) if datetime else '' }}
-{%- endmacro %}
-
 {% macro a_tag(href, label, class="", new_tab=False) -%}
     {% set target = ' target="_blank"' if new_tab else '' %}
-    <a class="{{ class }}" href="{{ href }}"{{ target }}>{{ label }}</a>
+    <a class="{{class}}" href="{{href}}"{{target}}>{{label}}</a>
 {%- endmacro %}
 
 {% macro is_none(value) -%}
@@ -18,7 +10,6 @@
 {% macro setup_select(field) -%}
     setupSelect("#{{field.id}}", {{ is_none(field.data) }});
 {%- endmacro %}
-
 
 {% macro display_form_errors(form) -%}
     {% if form.errors %}
@@ -93,14 +84,6 @@
             {{ field_input(field) }}
         </div>
     
-    {% elif field.type in ("ReCaptchaField",)%}
-        {% if not recaptcha_included %}
-            <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-            {% set recaptcha_included = True %}
-        {% endif %}
-        {% if show_errors %} {{ field_errors(field) }} {% endif %}
-        {{ field_input(field) }}
-
     {% elif field.type in ("HiddenField",) %}
         {{ field_input(field, **{"type": "hidden", "style": "display: none;"}) }}
 
@@ -115,11 +98,6 @@
     {% endif %}
 {% endmacro %}
 
-{% macro form_field_reverse(field) %}
-    {{ field_input(field) }}
-    {{ field.label }}
-{% endmacro %}
-
 {% macro form_submit(submit_text="Save", back_text="Cancel") %}
     <div class="form-submit">
         <button class="button save" id="submit" type="submit" value="Submit">{{ cancel_text }}</button>
@@ -129,12 +107,4 @@
         {% endif %}
 
     </div>
-{% endmacro %}
-
-{% macro display_warnings(messages) %}
-{% if messages %}
-    {% for message in messages%}
-        warningBox("Warning", "{{message}}")
-    {% endfor %}
-{% endif %}
 {% endmacro %}

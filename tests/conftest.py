@@ -22,9 +22,8 @@ def app() -> Yield[Flask]:
 
     config.IS_PRODUCTION = False
     config.MAIL_REDIRECT_TO_DEVELOPER = False
-    config.CONNECTION_STRING = "sqlite:///:memory:"
 
-    yield create_app(config)
+    yield create_app()
 
 
 @pytest.fixture(scope="session")

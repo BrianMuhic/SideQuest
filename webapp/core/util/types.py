@@ -1,9 +1,9 @@
-from typing import Any, Generator, TypeVar
+import typing as t
 
-from sqlalchemy import Select
+import sqlalchemy as sa
 
-SelectT = TypeVar("SelectT", bound=Select[tuple[Any, ...]])
+SelectT = t.TypeVar("SelectT", bound=sa.Select[tuple[t.Any, ...]])
 
-type NameValueDict = dict[str, Any]
+type NameValueDict = dict[str, t.Any]
 type NameValueDicts = list[NameValueDict]
-type Yield[T] = Generator[T, None, None]
+type Yield[T] = t.Generator[T, None, None]

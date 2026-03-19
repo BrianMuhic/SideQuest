@@ -97,7 +97,7 @@ def use_db(func: Callable[Concatenate[Session, P], R]) -> Callable[P, R]:
         db = get_request_session()
         return func(db, *args, **kwargs)
 
-    return wrapper
+    return wrapper  # ty:ignore[invalid-return-type]
 
 
 # ==================== Engine ==================== #
@@ -109,18 +109,7 @@ def init_engine(config_: Any) -> Engine:
 
     _testing = config_.TESTING
 
-    connection_str = config_.CONNECTION_STRING or connection_string(
-        database=config_.ENGINE_DATABASE,
-        host=config_.ENGINE_HOST,
-        port=int(config_.ENGINE_PORT),
-        user=config_.ENGINE_USER,
-        password=config_.ENGINE_PASSWORD,
-        dialect=config_.ENGINE_DIALECT,
-        driver=config_.ENGINE_DRIVER,
-        extras=config_.ENGINE_EXTRAS or "",
-    )
-
-    engine_kwargs = {
+    engine_kwargs: dict[str, Any] = {
         "pool_pre_ping": True,
         "echo": False,
     }
@@ -140,7 +129,7 @@ def init_engine(config_: Any) -> Engine:
             "pool_use_lifo": True,
         }
 
-    _engine = sqlalchemy.create_engine(connection_str, **engine_kwargs)
+    _engine = sqlalchemy.create_engine(config_.DB_CONNECTION_STRING, **engine_kwargs)
     _session_factory = sessionmaker(
         bind=_engine,
         autoflush=True,
@@ -151,20 +140,6 @@ def init_engine(config_: Any) -> Engine:
         create_database(_engine.url)
 
     return _engine
-
-
-def connection_string(
-    database: str,
-    host: str,
-    port: int,
-    user: str,
-    password: str,
-    dialect: str,
-    driver: str,
-    extras: str,
-) -> str:
-    """Build a connection string from components."""
-    return f"{dialect}+{driver}://{user}:{password}@{host}:{port}/{database}{extras}"
 
 
 def get_engine() -> Engine:
@@ -181,12 +156,9 @@ def _log_slow_transactions(start_time: float) -> None:
     from webapp.config import config
 
     dt = default_timer() - start_time
-    if dt > config.DB_SESSION_TIME_WARN_THRESHOLD:
+    if dt > config.DB_TIME_WARN_THRESHOLD:
         route = strip_digits(request.path)
-        if (
-            dt > config.DB_SESSION_TIME_ERROR_THRESHOLD
-            and route not in config.DB_SESSION_TIME_IGNORE
-        ):
+        if dt > config.DB_TIME_ERROR_THRESHOLD and route not in config.DB_TIME_IGNORE:
             log.e(f"DB Session too long: {route}\n\t{request.path} ({dt:0.3f}s)")
         else:
             log.w(f"DB Session too long: {request.path} ({dt:0.3f}s)")
@@ -203,7 +175,9 @@ def check_database(config_: Any) -> dict[str, Any]:
         port = str(_engine.url.port)
         database = str(_engine.url.database)
         dialect = str(_engine.url.get_backend_name())
-        db_message = f"Connection successful: {config_.ENGINE_HOST}:{config_.ENGINE_PORT}/{config_.ENGINE_DATABASE}"
+        db_message = (
+            f"Connection successful: {config_.DB_HOST}:{config_.DB_PORT}/{config_.DB_DATABASE}"
+        )
     except Exception as err:
         db_status = 500
         db_message = f"Error occurred: {err}"

@@ -4,17 +4,15 @@ import re
 
 from core.util.string import remove_spaces_after, remove_spaces_before
 
-JINJA_VARIABLE_PATTERN = re.compile(r"\{\{([^}]+)\}\}")
-
 
 def find_variables(string: str) -> list[str]:
-    """return a list of variables in a string where a variable is wrapped in two braces"""
+    """Return a list of variables in a string where a variable is wrapped in two braces."""
 
-    return [s.strip() for s in JINJA_VARIABLE_PATTERN.findall(string)]
+    return [s.strip() for s in re.findall(r"\{\{([^}]+)\}\}", string)]
 
 
 def wrap_variables(string: str, before: str, after: str) -> str:
-    """Return a string where all variables are wrapped with before and after"""
+    """Return a string where all variables are wrapped with before and after."""
 
     variables = find_variables(string)
     open_braces = "{{"
@@ -26,7 +24,7 @@ def wrap_variables(string: str, before: str, after: str) -> str:
 
 
 def remove_spaces_around_variables(string: str | None) -> str | None:
-    """Remove spaces from variables"""
+    """Remove spaces from variables."""
     if string is None:
         return None
 

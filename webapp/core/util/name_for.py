@@ -5,7 +5,6 @@ from sqlalchemy.orm import Mapped
 from core.db.base_csv import BaseCsv
 from core.db.base_enum import BaseEnum
 
-T = TypeVar("T")
 NameType = TypeVar("NameType", bound=str | None | Mapped[str] | Mapped[str | None])
 
 
@@ -15,13 +14,33 @@ class HasName(Protocol[NameType]):
     name: NameType
 
 
+def name_for_any(obj: HasName | str | None, default: str = "") -> str:
+    """
+    Get name from any object with a string 'name' attribute.
+
+    Returns:
+    - `HasName => obj.name`
+    - `str => obj`
+    - `None => default`
+    """
+    if obj is None:
+        return default
+    if isinstance(obj, str):
+        return obj
+
+    value = obj.name
+    if value is None:
+        return default
+    return value
+
+
 def name_for(obj: BaseEnum | BaseCsv | str | None, default: str = "") -> str:
     """
     Convert enum-like objects to display strings with optional fallback.
 
     Returns:
     - `BaseEnum => obj.title`
-    - `CsvBase => obj.name`
+    - `BaseCsv => obj.name`
     - `str => obj`
     - `None => default`
 
@@ -34,20 +53,3 @@ def name_for(obj: BaseEnum | BaseCsv | str | None, default: str = "") -> str:
     if isinstance(obj, BaseCsv):
         return obj.name
     return obj
-
-
-def name_for_any(obj: HasName | None, default: str = "") -> str:
-    """
-    Get name from any object with a string 'name' attribute.
-
-    Returns:
-    - `HasName => obj.name`
-    - `None => default`
-    """
-    if obj is None:
-        return default
-
-    value = obj.name
-    if value is None:
-        return default
-    return value

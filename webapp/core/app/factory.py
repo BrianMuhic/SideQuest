@@ -5,7 +5,6 @@ from typing import Any
 from flask import Flask, redirect, url_for
 from flask.config import Config
 from flask_assets import Bundle, Environment
-from pydantic_settings import BaseSettings
 from sqlalchemy import text
 
 from blueprints import BLUEPRINTS
@@ -81,7 +80,7 @@ def _setup_jinja(app: CustomFlask) -> None:
     app.jinja_options["line_statement_prefix"] = ">>"
     app.jinja_options["line_comment_prefix"] = "##"
     app.jinja_env.add_extension("jinja2.ext.loopcontrols")
-    add_template_filters(app)
+    add_template_filters(app.jinja_env)
 
     @app.context_processor
     def _inject_globals() -> dict[str, Any]:
@@ -130,7 +129,7 @@ def _setup_db(app: CustomFlask) -> None:
             db.execute(text("SELECT RELEASE_LOCK('app_init')"))
 
 
-def create_app(alt_config: Config | BaseSettings | None = None) -> Flask:
+def create_app() -> Flask:
     app = CustomFlask(
         __name__,
         static_url_path="/static",
@@ -138,7 +137,7 @@ def create_app(alt_config: Config | BaseSettings | None = None) -> Flask:
         template_folder="../templates",
     )
 
-    app.config.from_object(alt_config or config)
+    app.config.from_object(config)
     app.teardown_appcontext(close_request_session)
     app.permanent_session_lifetime = timedelta(minutes=config.USER_SESSION_TIMEOUT_MINUTES)
 

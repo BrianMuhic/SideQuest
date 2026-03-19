@@ -17,6 +17,6 @@ if __name__ == "__main__":
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         log.i("Reloaded")
     else:
-        log.i(f"Running on {config.BASE_URL}")
+        log.i(f"Running on {config.APP_URL}")
 
-    app.run(debug=True, host=config.FLASK_RUN_HOST, port=config.FLASK_RUN_PORT)
+    app.run(debug=True, host=config.APP_HOST, port=config.APP_PORT)

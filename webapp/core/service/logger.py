@@ -149,12 +149,12 @@ def _add_handler(
 def make_logger(
     logger: logging.Logger | None = None,  # Used to reuse logger.
     # Streams
-    streams_level: int | str = logging.INFO,
+    streams_level: int | str | None = logging.DEBUG,
     # File
-    file_level: int | str = logging.DEBUG,
+    file_level: int | str | None = logging.DEBUG,
     log_filename: str | None = None,
     # Email
-    email_level: int | str | None = None,
+    mail_level: int | str | None = None,
     mail_host: str = "localhost",
     mail_port: int = 25,
     credentials: tuple[str, str] | None = None,
@@ -188,7 +188,7 @@ def make_logger(
         handler = FileHandler(log_filename, encoding="utf8")
         _add_handler(logger, file_level, handler)
 
-    if email_level and to_addrs:
+    if mail_level and to_addrs:
         handler = SFLSMTPHandler(
             (mail_host, mail_port),
             from_addr,
@@ -198,7 +198,7 @@ def make_logger(
             secure,
             timeout,
         )
-        _add_handler(logger, email_level, handler)
+        _add_handler(logger, mail_level, handler)
 
     return CustomLogger.wrap(logger)
 
@@ -208,16 +208,16 @@ def config_logger(config_: Any) -> None:
 
     make_logger(
         logger=None,
-        streams_level=config_.LOG_STREAMS_LEVEL or logging.INFO,
-        file_level=config_.LOG_FILE_LEVEL or logging.DEBUG,
-        log_filename=config_.LOG_FILE_NAME,
-        email_level=config_.LOG_EMAIL_LEVEL or None,
+        streams_level=config_.LOG_STREAMS_LEVEL or None,
+        file_level=config_.LOG_FILE_LEVEL or None,
+        mail_level=config_.LOG_MAIL_LEVEL or None,
+        log_filename=config_.LOG_FILE,
         mail_host=config_.MAIL_SERVER,
         mail_port=config_.LOG_MAIL_PORT,
         credentials=(config_.MAIL_USERNAME, config_.MAIL_PASSWORD),
-        from_addr=config_.LOG_MAIL_FROM,
-        to_addrs=config_.LOG_MAIL_TO,
-        subject=f"Logger Error in {config_.APP_NAME}",
+        from_addr=config_.LOG_MAIL_SENDER,
+        to_addrs=config_.LOG_MAIL_RECIPIENTS,
+        subject="Logger Error",
     )
 
 

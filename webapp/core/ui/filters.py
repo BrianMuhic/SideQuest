@@ -1,24 +1,22 @@
 import re
 from datetime import date, datetime
-from typing import Any
+from zoneinfo import ZoneInfo
 
-from flask import Flask
+from jinja2 import Environment
 
-from config import config
+from webapp.config import config
 
 
-def add_template_filters(app: Flask) -> None:
+def add_template_filters(jinja_env: Environment) -> None:
     """Register custom Jinja template filters with the Flask app."""
     for func in (
         phone_format,
         date_format,
         date_long_format,
         datetime_format,
-        date_format_str,
-        datetime_format_str,
         currency_format,
     ):
-        app.jinja_env.filters[func.__name__] = func
+        jinja_env.filters[func.__name__] = func
 
 
 # ==================== Filters ==================== #
@@ -40,44 +38,36 @@ def phone_format(phone_number: str | None) -> str:
     return phone_number
 
 
-def date_format(date_: date | None) -> str:
+def date_format(date_: date | datetime | None, format: str | None = None) -> str:
     """
     Formats a date object using the configured date format.
     in html: {{ record.date | date_format }}
     """
-    return date_.strftime(config.DATE_FORMAT) if date_ else ""
+    format = format or config.DATE_FORMAT
+    return date_.strftime(format) if date_ else ""
 
 
-def date_long_format(date_: date | None) -> str:
+def date_long_format(date_: date | datetime | None, format: str | None = None) -> str:
     """
     Formats a date object using the configured long date format.
     in html: {{ record.date | date_long_format }}
     """
-    return date_.strftime(config.DATE_LONG_FORMAT) if date_ else ""
+    format = format or config.DATE_LONG_FORMAT
+    return date_.strftime(format) if date_ else ""
 
 
-def datetime_format(datetime_: datetime | None) -> str:
+def datetime_format(datetime_: datetime | None, format: str | None = None) -> str:
     """
     Formats a datetime object using the configured datetime format.
+    If the datetime object is timezone aware, convert it to config.LOCAL_TIMEZONE.
     in html: `{{ record.date | datetime_format }}`
     """
-    return datetime_.strftime(config.DATETIME_FORMAT_LONG) if datetime_ else ""
-
-
-def date_format_str(_: Any) -> str:
-    """
-    Returns the date format string from the config, converted to Moment.js format.
-    in html: `{{ '' | date_format_str }}`
-    """
-    return _convert_py_format_to_moment(config.DATE_FORMAT)
-
-
-def datetime_format_str(_: Any) -> str:
-    """
-    Returns the datetime format string from the config, converted to Moment.js format.
-    in html: `{{ '' | datetime_format_str }}`
-    """
-    return _convert_py_format_to_moment(config.DATETIME_FORMAT_LONG)
+    if not datetime_:
+        return ""
+    if datetime_.tzinfo is not None:
+        datetime_ = datetime_.astimezone(ZoneInfo(config.LOCAL_TIMEZONE))
+    format = format or config.DATETIME_FORMAT
+    return datetime_.strftime(format)
 
 
 def currency_format(value: float | int | str | None, decimals: int = 0, symbol: str = "$") -> str:
@@ -92,50 +82,3 @@ def currency_format(value: float | int | str | None, decimals: int = 0, symbol: 
     if isinstance(value, str):
         value = float(value)
     return f"{symbol}{value:,.{decimals}f}"
-
-
-# ==================== Helpers ==================== #
-
-
-def _convert_py_format_to_moment(py_format: str) -> str:
-    """Converts Python's strftime format to Moment.js format."""
-
-    format_map = {
-        "%Y": "YYYY",
-        "%y": "YY",
-        "%m": "MM",
-        "%-m": "M",
-        "%d": "DD",
-        "%-d": "D",
-        "%H": "HH",
-        "%-H": "H",
-        "%I": "hh",
-        "%-I": "h",
-        "%M": "mm",
-        "%-M": "m",
-        "%S": "ss",
-        "%-S": "s",
-        "%f": "SSS",
-        "%z": "Z",
-        "%Z": "z",
-        "%j": "DDDD",
-        "%-j": "DDD",
-        "%U": "ww",
-        "%W": "ww",
-        "%w": "e",
-        "%a": "ddd",
-        "%A": "dddd",
-        "%b": "MMM",
-        "%B": "MMMM",
-        "%p": "A",
-        "%c": "llll",
-        "%x": "L",
-        "%X": "LT",
-        "%%": "%",
-    }
-
-    js_format = py_format
-    for py_spec in sorted(format_map.keys(), key=len, reverse=True):
-        js_format = js_format.replace(py_spec, format_map[py_spec])
-
-    return js_format

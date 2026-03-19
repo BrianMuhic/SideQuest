@@ -27,7 +27,7 @@ class Endpoint:
         """Generate a URL for this endpoint."""
         from webapp.config import config
 
-        return config.BASE_URL + url_for(self.route, **kwargs)
+        return config.APP_URL + url_for(self.route, **kwargs)
 
     def redirect(self, code: int = 302, **kwargs: Any) -> Response:
         """Create a redirect response to this endpoint."""

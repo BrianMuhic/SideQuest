@@ -1,10 +1,13 @@
 """Formatting helpers for python"""
 
+from decimal import Decimal
 from typing import Any
 
 
-def format_currency(val: float, negative_parentheses: bool = True) -> str:
-    """handle parentheses for negative currency"""
+def format_currency(val: float | Decimal | None, negative_parentheses: bool = True) -> str:
+    """Handle parentheses for negative currency. Returns empty string for None."""
+    if val is None:
+        return ""
     if val >= 0:
         return f"${val:,.2f}"
     if negative_parentheses:

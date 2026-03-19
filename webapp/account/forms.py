@@ -18,7 +18,7 @@ from account.service import require_user
 from core.service.logger import get_logger
 from core.ui.base_form import BaseForm
 from core.ui.form_utils import (
-    add_error,
+    form_error,
     readonly_attrs,
     str_lower,
     str_strip,
@@ -38,9 +38,9 @@ class LoginForm(BaseForm):
         if not super().validate(extra_validators):
             return False
 
-        user = User.with_email(self.db, self.email.data)  # type: ignore
-        if not user or not user.check_password(self.password.data):  # type: ignore
-            return add_error(self.email, "Invalid email or password")
+        user = User.with_email(self.db, self.email.data)
+        if not user or not user.check_password(self.password.data):
+            return form_error(self.email, "Invalid email or password")
 
         self.user = user
 
@@ -75,7 +75,7 @@ class InitialRegistrationForm(BaseRegistrationForm):
     )
 
     def validate_email(self, field: EmailField) -> None:
-        if User.with_email(self.db, field.data):  # type: ignore
+        if User.with_email(self.db, field.data):
             raise ValidationError("This email already exists")
 
     def export(self) -> User:
@@ -84,7 +84,7 @@ class InitialRegistrationForm(BaseRegistrationForm):
             first_name=self.first_name.data,
             last_name=self.last_name.data,
         )
-        user.set_password(self.password.data)  # type: ignore
+        user.set_password(self.password.data)
         user.add(self.db, flush=True)
 
         log.i(f"Registered {user}")
@@ -111,8 +111,8 @@ class EditRegistrationForm(BaseRegistrationForm):
         self.last_name.data = self._user.last_name
 
     def export(self) -> None:
-        self._user.first_name = self.first_name.data  # type: ignore
-        self._user.last_name = self.last_name.data  # type: ignore
+        self._user.first_name = self.first_name.data
+        self._user.last_name = self.last_name.data
 
 
 class ChangePasswordForm(BaseForm):
@@ -120,7 +120,7 @@ class ChangePasswordForm(BaseForm):
     new_password = PasswordField(
         "New Password",
         filters=[str_strip],
-        validators=[Length(min=4, max=256)],  # TODO: Get reqs from config
+        validators=[Length(min=4, max=256)],
     )
     verify_new_password = PasswordField(
         "Repeat New Password", filters=[str_strip], validators=[EqualTo("new_password")]
@@ -137,11 +137,11 @@ class ChangePasswordForm(BaseForm):
         self._user = user
 
     def validate_current_password(self, field: PasswordField) -> None:
-        if not self._user.check_password(field.data):  # type: ignore
+        if not self._user.check_password(field.data):
             raise ValidationError("Invalid password")
 
     def export(self) -> None:
-        self._user.set_password(self.new_password.data)  # type: ignore
+        self._user.set_password(self.new_password.data)
         log.i(f"Change password for {self._user}")
 
 
@@ -153,7 +153,7 @@ class ForgotPasswordForm(BaseForm):
     )
 
     def export(self) -> str:
-        return self.email.data  # type: ignore
+        return self.email.data
 
 
 class ResetPasswordForm(BaseForm):
@@ -163,4 +163,4 @@ class ResetPasswordForm(BaseForm):
     )
 
     def export(self) -> str:
-        return self.password.data  # type: ignore
+        return self.password.data
