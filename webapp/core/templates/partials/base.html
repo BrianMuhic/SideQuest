@@ -27,17 +27,9 @@
 </head>
 
 <body>
-	<header>
-		{% block header %}{% endblock header %}
-	</header>
-
 	<main>
 		{% block body %}{% endblock body %}
 	</main>
-
-	<footer>
-		{% block footer %}{% endblock footer %}
-	</footer>
 
 	{% assets "js" %}
 	<script src="{{ ASSET_URL }}"></script>
