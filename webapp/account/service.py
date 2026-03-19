@@ -150,7 +150,6 @@ def admin_required(func: Callable[..., Any]) -> Callable[..., Any]:
 
 def login(user: User) -> None:
     log.i(f"Login {user}")
-    session.clear()
     login_user(user=user, remember=False)
 
     user.last_login_at = now_utc()
@@ -160,7 +159,6 @@ def login(user: User) -> None:
 def logout() -> None:
     log.i(f"Logout {get_user()}")
     logout_user()
-    session.clear()
 
 
 def user_session_timeout() -> None:

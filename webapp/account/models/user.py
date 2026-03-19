@@ -25,16 +25,13 @@ class Role(BaseEnum):
 class User(BaseAudit, UserMixin):
     __tablename__ = "users"
 
-    email: Str = mapped_column(index=True, unique=True)
+    username: Str = mapped_column(index=True, unique=True)
     role: Mapped[Role] = mapped_column(default=Role.USER)
 
     _password: Str
     access_token: StrNone = mapped_column(String(32), unique=True)
     last_login_at: DateTimeNone
     num_logins: IntZero
-
-    first_name: Str = mapped_column(index=True)
-    last_name: Str = mapped_column(index=True)
 
     # -------------------- Authentication -------------------- #
 
@@ -51,12 +48,8 @@ class User(BaseAudit, UserMixin):
     # -------------------- Other -------------------- #
 
     def __repr__(self) -> str:
-        return f"<User #{self.id} {self.email}>"
-
-    @property
-    def name(self) -> str:
-        return f"{self.first_name} {self.last_name}"
+        return f"<User #{self.id} {self.username}>"
 
     @classmethod
-    def with_email(cls, db: Session, email: str) -> Self | None:
-        return db.scalar(select(cls).filter_by(email=email))
+    def with_username(cls, db: Session, username: str) -> Self | None:
+        return db.scalar(select(cls).filter_by(username=username))

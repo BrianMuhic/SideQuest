@@ -26,7 +26,7 @@ def login(db: Session) -> ResponseReturnValue:
     if form.validate():
         user = form.export()
         service.login(user)
-        return {"first_name": user.first_name}
+        return {"username": user.username}
     return form.errors, form.status_code
 
 
@@ -45,8 +45,9 @@ def logout() -> ResponseReturnValue:
 def register(db: Session) -> ResponseReturnValue:
     form = InitialRegistrationForm(db)
     if form.validate():
-        service.login(form.export())
-        return "done"
+        user = form.export()
+        service.login(user)
+        return {"username": user.username}
     return form.errors, form.status_code
 
 

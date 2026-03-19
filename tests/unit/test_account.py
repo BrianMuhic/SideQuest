@@ -22,21 +22,21 @@ def _assert_not_logged_in(client: FlaskClient) -> None:
 
 def _login_successfully(
     client: FlaskClient,
-    email: str = AccountConstant.EMAIL,
+    username: str = AccountConstant.USERNAME,
     password: str = AccountConstant.PASSWORD,
 ):
     """TODO: DOCSTRING"""
-    login(client, email, password)
+    login(client, username, password)
     _assert_logged_in(client)
 
 
 def _login_unsuccessfully(
     client: FlaskClient,
-    email: str = AccountConstant.EMAIL,
+    username: str = AccountConstant.USERNAME,
     password: str = AccountConstant.BAD_PASSWORD,
 ):
     """TODO: DOCSTRING"""
-    login(client, email, password)
+    login(client, username, password)
     _assert_not_logged_in(client)
 
 
@@ -51,5 +51,5 @@ def _logout_successfully(client: FlaskClient):
 
 def test_logout_user(client: FlaskClient, user: User):
     """TODO: DOCSTRING"""
-    _login_successfully(client, user.email)
+    _login_successfully(client, user.username)
     _logout_successfully(client)

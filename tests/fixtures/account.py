@@ -2,7 +2,7 @@ import pytest
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
-from account.models import Role, User
+from account.models import User
 from core.util.types import Yield
 
 from tests.util import login, logout
@@ -11,11 +11,9 @@ from tests.util import login, logout
 class Constant:
     """TODO: DOCSTRING"""
 
-    EMAIL = "email@test.com"
-    PASSWORD = "password"
+    USERNAME = "gg4fellas"
+    PASSWORD = "password!1$"
     BAD_PASSWORD = "invalid_password"
-    FIRST_NAME = "John"
-    LAST_NAME = "Doe"
 
 
 @pytest.fixture(scope="module")
@@ -28,10 +26,7 @@ def constant() -> Yield[Constant]:
 def user(db: Session, constant: Constant) -> Yield[User]:
     """TODO: DOCSTRING"""
     user = User(
-        email=constant.EMAIL,
-        first_name=constant.FIRST_NAME,
-        last_name=constant.LAST_NAME,
-        role=Role.USER,
+        username=constant.USERNAME,
     )
     user.set_password(constant.PASSWORD)
     user.add(db, flush=True)
@@ -45,6 +40,6 @@ def user_client(
     user: User,
 ) -> Yield[FlaskClient]:
     """TODO: DOCSTRING"""
-    login(client, user.email, constant.PASSWORD)
+    login(client, user.username, constant.PASSWORD)
     yield client
     logout(client)

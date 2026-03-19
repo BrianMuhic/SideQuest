@@ -17,8 +17,16 @@
 }
 
 .modal_header {
+	display: flex;
+	gap: 1rem;
 	font-weight: bold;
 	margin-bottom: 0.75rem;
+}
+
+.modal_tab {
+	cursor: pointer;
+	opacity: 0.45;
+	&.active { opacity: 1; }
 }
 
 .modal_body {

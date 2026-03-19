@@ -71,8 +71,8 @@ def set_session(client: FlaskClient, key, value):
         session[key] = value
 
 
-def login(client: FlaskClient, email: str, password: str):
-    data = dict(email=email, password=password)
+def login(client: FlaskClient, username: str, password: str):
+    data = dict(username=username, password=password)
     post(client, "/account/login", data)
 
 
