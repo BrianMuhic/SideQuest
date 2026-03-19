@@ -34,10 +34,16 @@ def upgrade():
         sa.Column("sent_at", sa.DateTime(), nullable=False),
         sa.Column("failed", sa.Boolean(), nullable=False),
         sa.Column(
-            "created_date", sa.DateTime(), server_default=sa.text("UTC_TIMESTAMP"), nullable=False
+            "created_date",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
         ),
         sa.Column(
-            "modified_date", sa.DateTime(), server_default=sa.text("UTC_TIMESTAMP"), nullable=False
+            "modified_date",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
         ),
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_email_logs")),
@@ -47,10 +53,16 @@ def upgrade():
         sa.Column("name", sa.String(length=256), nullable=False),
         sa.Column("value", sa.JSON(), nullable=False),
         sa.Column(
-            "created_date", sa.DateTime(), server_default=sa.text("UTC_TIMESTAMP"), nullable=False
+            "created_date",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
         ),
         sa.Column(
-            "modified_date", sa.DateTime(), server_default=sa.text("UTC_TIMESTAMP"), nullable=False
+            "modified_date",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
         ),
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_settings")),
@@ -67,10 +79,16 @@ def upgrade():
         sa.Column("first_name", sa.String(length=256), nullable=False),
         sa.Column("last_name", sa.String(length=256), nullable=False),
         sa.Column(
-            "created_date", sa.DateTime(), server_default=sa.text("UTC_TIMESTAMP"), nullable=False
+            "created_date",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
         ),
         sa.Column(
-            "modified_date", sa.DateTime(), server_default=sa.text("UTC_TIMESTAMP"), nullable=False
+            "modified_date",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
         ),
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_users")),
