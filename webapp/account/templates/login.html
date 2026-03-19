@@ -2,16 +2,24 @@
 
 {% block body %}
 
-<form method="post">
-    {{ form.csrf_token }}
+<div class="login-container">
+    <div class="login-card">
+        <h2>Login to Your Account</h2>
+        <form method="post" class="login-form">
+            {{ form.csrf_token }}
 
-    {{ macros.form_field(form.email) }}
-    {{ macros.form_field(form.password) }}
-    
-    <br/>
-
-    {{ macros.field_input(form.submit) }}
-
-</form>
+            {{ macros.form_field(form.email) }}
+            {{ macros.form_field(form.password) }}
+            
+            <div class="form-actions">
+                {{ macros.field_input(form.submit) }}
+            </div>
+        </form>
+        <div class="login-links">
+            <a href="{{ url_for('account.register') }}">Don't have an account? Register</a>
+            <a href="{{ url_for('account.forgot_password') }}">Forgot Password?</a>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
