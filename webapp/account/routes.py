@@ -60,7 +60,7 @@ def register(db: Session) -> ResponseReturnValue:
 
 #     if form.validate_on_submit():
 #         form.export()
-#         return endpoint.home.redirect()
+#         return endpoint.index.redirect()
 #     elif not form.is_submitted():
 #         form.import_()
 

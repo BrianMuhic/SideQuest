@@ -65,7 +65,7 @@ def guest_required(func: Callable[..., Any]) -> Callable[..., Any]:
     Decorator to require unauthenticated users for a view function.
 
     Ensures that the current user is NOT authenticated before allowing access
-    to the decorated view. If the user is authenticated, redirect them to the home page.
+    to the decorated view. If the user is authenticated, redirect them to the index page.
 
     Example::
 
@@ -78,7 +78,7 @@ def guest_required(func: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(func)
     def decorated_function(*args, **kwargs):
         if get_user():
-            return endpoint.home.redirect()
+            return endpoint.index.redirect()
         return func(*args, **kwargs)
 
     return decorated_function

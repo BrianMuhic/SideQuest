@@ -15,4 +15,5 @@ log = get_logger()
 def index(db: Session) -> ResponseReturnValue:
     return render_template(
         "index.html",
+        title="SideQuest",
     )
