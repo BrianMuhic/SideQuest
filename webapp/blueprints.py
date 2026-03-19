@@ -1,7 +1,7 @@
 from account.routes import bp as account_bp
-from static_pages.routes import bp as static_bp
+from osm.routes import bp as osm_bp
 
 BLUEPRINTS = [
     account_bp,
-    static_bp,
+    osm_bp,
 ]

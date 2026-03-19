@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from core.app.extensions import mail
 from core.models.email_log import EmailLog
 from core.service.logger import get_logger
-from core.service.settings import settings
+from core.util.date import now_utc
 
 log = get_logger()
 
@@ -72,7 +72,7 @@ def send_email(
         attachments=attachments if isinstance(attachments, Sequence) else [attachments],
         reply_to=_clean_emails(reply_to),
         redirect=config.MAIL_REDIRECT_TO_DEVELOPER,
-        redirect_to=_clean_emails(settings.email_redirect_recipients),
+        redirect_to=_clean_emails(config.MAIL_REDIRECT_RECIPIENTS),
     )
 
     if _validate_email(email):
@@ -108,7 +108,7 @@ def _send_emails(db: Session, emails: Sequence[Email] | Email) -> None:
             [
                 dict(
                     id=email.log_id,
-                    sent_at=settings.now_utc(),
+                    sent_at=now_utc(),
                     failed=False,
                 )
                 for email in emails
@@ -140,7 +140,7 @@ def _send_email(db: Session, conn: Connection, email: Email, attempt: int = 1) -
         db.execute(
             update(EmailLog)
             .where(EmailLog.id == email.log_id)
-            .values(sent_at=settings.now_utc(), failed=failed)
+            .values(sent_at=now_utc(), failed=failed)
         )
 
     if email.redirect and not email.redirect_to:
@@ -211,7 +211,7 @@ def _create_email(
         reply_to=reply,
         redirected=redirect,
         redirected_to=redirected_to if redirect else None,
-        sent_at=settings.now_utc(),
+        sent_at=now_utc(),
         failed=True,
     ).add(db, flush=True)
 

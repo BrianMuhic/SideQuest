@@ -7,23 +7,16 @@ from werkzeug.exceptions import (
     HTTPException,
 )
 
-from core.app import endpoint
 from core.service.logger import get_logger
 from core.util.traceback import exc_info, format_traceback
 
 log = get_logger()
 
-IGNORE_404 = (
-    "ads.txt",
-    ".well-known/appspecific/com.chrome.devtools.json",
-)
-
-BLOCK_REPEATED_ERRORS = (
-    HTTPStatus.UNAUTHORIZED.value,
-    HTTPStatus.FORBIDDEN.value,
-    HTTPStatus.NOT_FOUND.value,
-    HTTPStatus.METHOD_NOT_ALLOWED.value,
-)
+IGNORE_404 = {
+    "/ads.txt",
+    "/apple-touch-icon-precomposed.png",
+    "/.well-known/appspecific/com.chrome.devtools.json",
+}
 
 
 def register_error_handlers(app: Flask) -> None:
@@ -34,37 +27,17 @@ def register_error_handlers(app: Flask) -> None:
 # ==================== Exception Handlers ==================== #
 
 
-class CustomException(HTTPException):
-    _name: str
-
-    def __init__(
-        self, name: str, description: str = "", code: int = HTTPStatus.BAD_REQUEST
-    ) -> None:
-        super().__init__(description)
-        self._name = name
-        self.code = code
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-
 def handle_http_exception(err: HTTPException) -> ResponseReturnValue:
     """Handle general http exceptions and return appropriate details."""
 
     if not err.description or err.code in (None, HTTPStatus.INTERNAL_SERVER_ERROR):
         return handle_exception(err)
 
-    if err.code != HTTPStatus.NOT_FOUND or not any(
-        request.path.endswith(route) for route in IGNORE_404
-    ):
+    if err.code != HTTPStatus.NOT_FOUND or request.path not in IGNORE_404:
         message = f"{err.code} {err.name} on {request.method} {request.path}"
         if err.description != getattr(type(err), "description", None):
             message += f": {err.description}"
         log.w(message)
-
-    if err.code == HTTPStatus.UNAUTHORIZED:
-        return endpoint.account_login.redirect(next=request.url)
 
     return render_error(err.name, err.description, err.code)
 
@@ -83,7 +56,7 @@ def handle_exception(_err: Exception) -> ResponseReturnValue:
 
 
 def render_error(name: str, description: str, code: int) -> ResponseReturnValue:
-    if request.content_type == "application/json":
+    if request.method == "POST" or request.content_type == "application/json":
         return description, code
     response = render_template(
         "simple.html",

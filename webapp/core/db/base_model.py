@@ -5,39 +5,17 @@ All other models are assumed to subclass Base.
 
 from datetime import datetime, timezone
 from functools import partial
-from typing import (
-    Any,
-    Iterable,
-    TypeVar,
-)
+from typing import Any, Iterable, Self, TypeVar
 
-from sqlalchemy import (
-    ColumnElement,
-    ForeignKey,
-    MetaData,
-    or_,
-    select,
-    text,
-)
+from sqlalchemy import ForeignKey, MetaData, ScalarResult, exists, select, text
 from sqlalchemy.dialects.mysql import LONGBLOB
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.orm import (
-    DeclarativeBase,
-    InstrumentedAttribute,
-    Mapped,
-    Session,
-    mapped_column,
-    relationship,
-)
-from sqlalchemy.sql import Executable, Select
-from sqlalchemy.sql.functions import func
-from typing_extensions import Self
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 from werkzeug.exceptions import NotFound
 
 from core.db.mapped_types import DateTimeNow, Int
 
 T = TypeVar("T", bound="Base")
-U = TypeVar("U")
 
 
 @compiles(LONGBLOB, "sqlite")
@@ -48,6 +26,7 @@ def compile_longblob_sqlite(_type, _compiler, **_kw) -> str:
 
 class Base(DeclarativeBase):
     __abstract__ = True
+    __allow_unmapped__ = True
 
     # Naming conventions for alembic migrations
     metadata = MetaData(
@@ -62,16 +41,11 @@ class Base(DeclarativeBase):
 
     id: Int = mapped_column(primary_key=True, autoincrement=True)
 
-    def __init__(self, **kwargs) -> None:
-        """Initialize model with keyword arguments as attributes."""
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
     def __repr__(self) -> str:
         """Return string representation showing class name and ID."""
         return f"<{self.__class__.__name__} #{self.id}>"
 
-    # ---------- Foreign Keys ---------- #
+    # --------------- Foreign Keys --------------- #
     @classmethod
     def _fk(
         cls, nullable: bool, index: bool = True, use_alter: bool = False, **kwargs
@@ -90,7 +64,7 @@ class Base(DeclarativeBase):
         """Create a nullable foreign key to this model."""
         return cls._fk(nullable=True, **kwargs)
 
-    # ---------- Relationships ---------- #
+    # --------------- Relationships --------------- #
     @classmethod
     def relationship(
         cls: type[T],
@@ -110,8 +84,16 @@ class Base(DeclarativeBase):
         """Create a nullable relationship to this model."""
         return cls.relationship(fk=fk, **kwargs)
 
-    # ---------- Getters ---------- #
-    def as_data(self) -> dict[str, Any]:
+    @classmethod
+    def secondary_relationship(
+        cls: type[T],
+        table_name: str,
+        **kwargs,
+    ) -> Mapped[list[T]]:
+        return relationship(cls.__name__, secondary=table_name, **kwargs)
+
+    # --------------- Getters --------------- #
+    def to_dict(self) -> dict[str, Any]:
         """Return all column values as a dictionary."""
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
@@ -127,39 +109,54 @@ class Base(DeclarativeBase):
         """Get a record by ID, raising NotFound if not found."""
         record = cls.get(db, id_)
         if record is None:
-            raise NotFound
+            raise NotFound(f"{cls.__name__} {id_} not found")
         return record
 
     @classmethod
-    def all(cls, db: Session) -> Iterable[Self]:
+    def all(cls, db: Session) -> list[Self]:
         """Return all records of this model."""
-        return db.scalars(select(cls))
+        return list(db.scalars(select(cls)))
+
+    @classmethod
+    def with_ids(cls, db: Session, ids: Iterable[int]) -> list[Self]:
+        """Return records matching the given IDs."""
+        return list(db.scalars(select(cls).where(cls.id.in_(ids))))
+
+    @classmethod
+    def these(cls, db: Session, ids: Iterable[int]) -> ScalarResult[Self]:
+        """Return records matching the given IDs."""
+        # FIXME: why name the function `these`?
+        return db.scalars(select(cls).where(cls.id.in_(ids)))
 
     @classmethod
     def is_populated(cls, db: Session) -> bool:
         """Returns whether any records of cls exist."""
-        return db.scalar(select(cls.id)) is not None
+        return bool(db.scalar(select(exists(select(cls.id)))))
 
-    # ---------- Setters ---------- #
+    # --------------- Setters --------------- #
     def add(self, db: Session, flush: bool = False) -> Self:
         """Add this record to the session, optionally flushing immediately."""
         db.add(self)
         if flush:
-            db.flush([self])
+            self.flush(db)
         return self
-
-    def clone(self) -> Self:
-        """Warning: Does not clone sub-records"""
-        return self.__class__(**self.as_data())
 
     def flush(self, db: Session) -> Self:
         """Flush this record to the database without committing."""
         db.flush([self])
         return self
 
+    def clone(self) -> Self:
+        """Warning: Does not clone sub-records"""
+        fields = self.to_dict()
+        for f in {"id", "created_date", "modified_date"}:
+            fields.pop(f, None)
+        return self.__class__(**fields)
+
     @classmethod
     def delete(cls, db: Session, id_: int) -> None:
         """Delete a record by ID."""
+        cls.__table__
         record = cls.get_one(db, id_)
         db.delete(record)
 
@@ -175,12 +172,10 @@ class BaseAudit(Base):
     __abstract__ = True
 
     created_date: DateTimeNow
-    modified_date: DateTimeNow = mapped_column(
-        onupdate=partial(datetime.now, timezone.utc),
-    )
+    modified_date: DateTimeNow = mapped_column(onupdate=partial(datetime.now, timezone.utc))
 
 
-# ==================== Relationship Helpers ==================== #
+# ============================== Relationship Helpers ============================== #
 # Prevents circular dependencies until we find a better solution
 def fk_to(
     table_name: str,
@@ -200,50 +195,3 @@ def relationship_to(
     """Create a relationship to another model."""
     foreign_keys = [fk] if fk else None
     return relationship(model_name, foreign_keys=foreign_keys, **kwargs)
-
-
-# ============================== Helpers ============================== #
-
-
-def count(db: Session, query: Select[Any]) -> int:
-    """Return the number of records in the query"""
-    statement = select(func.count()).select_from(query.subquery())
-    result = db.execute(statement).scalar()
-    return result if result is not None else 0
-
-
-def bulk_execute(db: Session, statement: Executable) -> None:
-    """Execute a statement without synchronizing the session (faster for bulk operations)."""
-    db.execute(statement.execution_options(synchronize_session=False))
-
-
-def ne(nullable_field: InstrumentedAttribute[U], value: U | None) -> ColumnElement[bool]:
-    """
-    Safely compare a nullable field to value.
-    If field is Null, simply asking != will return False.
-    """
-    if value is None:
-        return nullable_field.isnot(None)
-    return or_(nullable_field.is_(None), nullable_field != value)
-
-
-def create_record(model_class: type[T], src_record: Base, set_id: bool = False) -> T:
-    """
-    Create a new instance of a model class from an existing record.
-
-    Args:
-        model_class: The target model class to instantiate
-        src_record: The source record to copy field values from
-        set_id: If True, include the id field in the copy; if False, exclude it to allow
-            database auto-generation of a new id
-
-    Returns:
-        A new instance of model_class with field values copied from src_record
-    """
-
-    fields = {
-        k: v
-        for k, v in src_record.__dict__.items()
-        if not k.startswith("_") and (set_id or k != "id")
-    }
-    return model_class(**fields)

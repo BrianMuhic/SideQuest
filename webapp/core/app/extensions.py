@@ -9,19 +9,12 @@ This might be integrated into the factory, but there are complications with flas
 
 from flask_login import LoginManager
 from flask_mail import Mail
-from flask_moment import Moment
 
-from core.app.flask_jsglue import JSGlue
-
-jsglue = JSGlue()
 login_manager = LoginManager()
 mail = Mail()
-moment = Moment()
 
 
 extensions = (
-    jsglue,
     login_manager,
     mail,
-    moment,
 )

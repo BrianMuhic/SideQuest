@@ -1,9 +1,9 @@
 from flask.testing import FlaskClient
 
 from account.models import User
-from util import login, logout
 
 from tests.fixtures.account import Constant as AccountConstant
+from tests.util import login, logout
 
 # ============================== Helpers ============================== #
 

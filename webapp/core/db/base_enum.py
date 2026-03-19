@@ -1,5 +1,5 @@
 from enum import IntEnum
-from typing import Self, Sequence
+from typing import Iterable, Self
 
 from werkzeug.exceptions import NotFound
 
@@ -20,25 +20,23 @@ class BaseEnum(IntEnum):
     def choices(
         cls,
         alphabetical: bool = False,
-        blank: bool = False,
-        other: bool = False,
-        include: Sequence[Self | int] | None = None,
-        exclude: Sequence[Self | int] | None = None,
+        include: Iterable[Self | int] | None = None,
+        exclude: Iterable[Self | int] | None = None,
+        default: tuple[int, str] | None = None,
+        default_index: int = 0,
     ) -> list[tuple[int, str]]:
-        arr = [(x.value, x.title) for x in cls]
+        sort_key = (lambda x: x[1]) if alphabetical else (lambda x: x[0])
+        arr = sorted(((x.value, x.title) for x in cls), key=sort_key)
 
-        if include:
+        if include is not None:
+            include = set(include)
             arr = [x for x in arr if x[0] in include]
-        if exclude:
+        if exclude is not None:
+            exclude = set(exclude)
             arr = [x for x in arr if x[0] not in exclude]
 
-        if alphabetical:
-            arr.sort(key=lambda x: x[1])
-
-        if blank:
-            arr.insert(0, (0, ""))
-        elif other:
-            arr.insert(0, (0, "Other"))
+        if default is not None:
+            arr.insert(default_index, default)
 
         return arr
 

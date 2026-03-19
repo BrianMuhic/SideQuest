@@ -1,10 +1,7 @@
-import secrets
 from functools import wraps
 from typing import Any, Callable, cast
 
 from flask import (
-    redirect,
-    request,
     session,
 )
 from flask.typing import ResponseReturnValue
@@ -13,7 +10,6 @@ from flask_login import (
     login_user,
     logout_user,
 )
-from flask_wtf.csrf import BadRequest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
@@ -23,7 +19,7 @@ from core.app import endpoint
 from core.app.extensions import login_manager
 from core.db.engine import use_db
 from core.service.logger import get_logger
-from core.service.settings import settings
+from core.util.date import now_utc
 
 log = get_logger()
 
@@ -152,23 +148,19 @@ def admin_required(func: Callable[..., Any]) -> Callable[..., Any]:
 # ============================== Authentication ============================== #
 
 
-def login(user: User) -> ResponseReturnValue:
+def login(user: User) -> None:
     log.i(f"Login {user}")
     session.clear()
     login_user(user=user, remember=False)
 
-    user.last_login_at = settings.now()
+    user.last_login_at = now_utc()
     user.num_logins += 1
 
-    next_url = request.args.get("next", endpoint.home.url())
-    return redirect(next_url)
 
-
-def logout() -> ResponseReturnValue:
+def logout() -> None:
     log.i(f"Logout {get_user()}")
     logout_user()
     session.clear()
-    return endpoint.home.redirect()
 
 
 def user_session_timeout() -> None:
@@ -194,31 +186,26 @@ def user_session_timeout() -> None:
 # ============================== User Management ============================== #
 
 
-def change_password(user: User, new_password: str) -> None:
-    user.set_password(new_password)
-    log.i(f"Change password for {user}")
+# def change_password(user: User, new_password: str) -> None:
+#     user.set_password(new_password)
+#     log.i(f"Change password for {user}")
 
 
-def forgot_password(db: Session, email: str) -> ResponseReturnValue:
-    if user := User.with_email(db, email):
-        log.i(f"Forgot password submission for {user}")
-        user.access_token = secrets.token_hex(16)
-        # TODO: Send forgot password message
-    else:
-        log.w(f"Forgot password submission for nonexistent email '{email}'")
-
-    # TODO: Figure out way to send to home page and display success box
-    return endpoint.home.redirect()
+# def forgot_password(db: Session, email: str) -> None:
+#     if user := User.with_email(db, email):
+#         log.i(f"Forgot password submission for {user}")
+#         user.access_token = secrets.token_hex(16)
+#         # TODO: Send forgot password message
+#     else:
+#         log.w(f"Forgot password submission for nonexistent email '{email}'")
 
 
-def reset_password(db: Session, access_token: str, password: str) -> ResponseReturnValue:
-    user = db.scalar(select(User).filter_by(access_token=access_token.strip()))
-    if user is None:
-        raise BadRequest("Invalid access token")
+# def reset_password(db: Session, access_token: str, password: str) -> None:
+#     user = db.scalar(select(User).filter_by(access_token=access_token.strip()))
+#     if user is None:
+#         raise BadRequest("Invalid access token")
 
-    log.i(f"Reset password for {user}")
+#     log.i(f"Reset password for {user}")
 
-    user.set_password(password)
-    user.access_token = None
-
-    return login(user)
+#     user.set_password(password)
+#     user.access_token = None

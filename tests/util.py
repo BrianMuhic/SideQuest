@@ -72,12 +72,12 @@ def set_session(client: FlaskClient, key, value):
 
 
 def login(client: FlaskClient, email: str, password: str):
-    data = dict(email=email, password=password, remember_me=True)
+    data = dict(email=email, password=password)
     post(client, "/account/login", data)
 
 
 def logout(client: FlaskClient):
-    get(client, "/account/logout")
+    post(client, "/account/logout")
 
 
 def assert_form_fields(form_data: NameValueDict, **kw) -> None:

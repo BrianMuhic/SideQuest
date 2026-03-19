@@ -1,3 +1,4 @@
+import inspect
 from os import PathLike
 from typing import Any, Callable, Sequence, TypeVar
 
@@ -16,11 +17,18 @@ class BaseBlueprint(flask.Blueprint):
     def __init__(
         self,
         name: str,
-        import_name: str,
+        import_name: str | None = None,
         url_prefix: str | None = None,
         template_folder: str | PathLike[str] | None = "templates",
         **kwargs,
     ):
+        if import_name is None:
+            frame = inspect.currentframe()
+            if frame and frame.f_back:
+                import_name: str = frame.f_back.f_globals.get("__name__")  # type: ignore
+            else:
+                import_name = "unknown"
+
         super().__init__(
             name=name,
             import_name=import_name,

@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     DB_PORT: int = 3306
     DB_DIALECT: str = "mysql"
     DB_DRIVER: str = "pymysql"
-    DB_EXTRAS: str | None = None
+    DB_EXTRAS: str = ""
 
     # DB Session Timer
     DB_TIME_WARN_THRESHOLD: float = 2.0
@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     # Mail
     # DO NOT SET TO False EXCEPT FOR IN PRODUCTION ENV
     MAIL_REDIRECT_TO_DEVELOPER: bool = True
+    MAIL_REDIRECT_RECIPIENTS: Sequence[str] = ()
     MAIL_DEFAULT_SENDER: str = _REQ
     MAIL_USERNAME: str = _REQ
     MAIL_PASSWORD: str = _REQ
@@ -75,7 +76,7 @@ class Settings(BaseSettings):
     def DB_CONNECTION_STRING(self) -> str:  # noqa: N802
         if self.TESTING:
             return "sqlite:///:memory:"
-        return f"{self.DB_DIALECT}+{self.DB_DRIVER}://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}{self.DB_EXTRAS}"
+        return f"{self.DB_DIALECT}+{self.DB_DRIVER}://{self.DB_USER}:{self.DB_PASSWORD or ''}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}{self.DB_EXTRAS}"
 
 
 config = Settings()

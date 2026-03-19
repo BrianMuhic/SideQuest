@@ -1,9 +1,7 @@
-from sqlalchemy.orm import Session
 from wtforms import (
     EmailField,
     PasswordField,
     StringField,
-    SubmitField,
     ValidationError,
 )
 from wtforms.validators import (
@@ -14,12 +12,10 @@ from wtforms.validators import (
 )
 
 from account.models import User
-from account.service import require_user
 from core.service.logger import get_logger
 from core.ui.base_form import BaseForm
 from core.ui.form_utils import (
     form_error,
-    readonly_attrs,
     str_lower,
     str_strip,
 )
@@ -32,7 +28,6 @@ class LoginForm(BaseForm):
         "Email", filters=[str_strip, str_lower], validators=[Email(), DataRequired()]
     )
     password = PasswordField("Password", filters=[str_strip], validators=[DataRequired()])
-    submit = SubmitField("Login")
 
     def validate(self, extra_validators=None) -> bool:
         if not super().validate(extra_validators):
@@ -68,7 +63,7 @@ class InitialRegistrationForm(BaseRegistrationForm):
     password = PasswordField(
         "Password",
         filters=[str_strip],
-        validators=[Length(min=4, max=256)],  # TODO: Get from config
+        validators=[Length(min=4, max=256)],
     )
     verify_password = PasswordField(
         "Repeat Password", filters=[str_strip], validators=[EqualTo("password")]
@@ -92,75 +87,75 @@ class InitialRegistrationForm(BaseRegistrationForm):
         return user
 
 
-class EditRegistrationForm(BaseRegistrationForm):
-    email = EmailField("Email Address", render_kw=readonly_attrs)
+# class EditRegistrationForm(BaseRegistrationForm):
+#     email = EmailField("Email Address", render_kw=readonly_attrs)
 
-    _user: User
+#     _user: User
 
-    def __init__(self, db: Session, user_id: int | None, **kwargs):
-        super().__init__(db, **kwargs)
+#     def __init__(self, db: Session, user_id: int | None, **kwargs):
+#         super().__init__(db, **kwargs)
 
-        user = require_user()
-        if user_id and user.is_admin:
-            user = User.get_one(db, user_id)
-        self._user = user
+#         user = require_user()
+#         if user_id and user.is_admin:
+#             user = User.get_one(db, user_id)
+#         self._user = user
 
-    def import_(self) -> None:
-        self.email.data = self._user.email
-        self.first_name.data = self._user.first_name
-        self.last_name.data = self._user.last_name
+#     def import_(self) -> None:
+#         self.email.data = self._user.email
+#         self.first_name.data = self._user.first_name
+#         self.last_name.data = self._user.last_name
 
-    def export(self) -> None:
-        self._user.first_name = self.first_name.data
-        self._user.last_name = self.last_name.data
-
-
-class ChangePasswordForm(BaseForm):
-    current_password = PasswordField("Password", filters=[str_strip], validators=[DataRequired()])
-    new_password = PasswordField(
-        "New Password",
-        filters=[str_strip],
-        validators=[Length(min=4, max=256)],
-    )
-    verify_new_password = PasswordField(
-        "Repeat New Password", filters=[str_strip], validators=[EqualTo("new_password")]
-    )
-
-    _user: User
-
-    def __init__(self, db: Session, user_id: int | None, **kwargs):
-        super().__init__(db, **kwargs)
-
-        user = require_user()
-        if user.is_admin and user_id:
-            user = User.get_one(db, user_id)
-        self._user = user
-
-    def validate_current_password(self, field: PasswordField) -> None:
-        if not self._user.check_password(field.data):
-            raise ValidationError("Invalid password")
-
-    def export(self) -> None:
-        self._user.set_password(self.new_password.data)
-        log.i(f"Change password for {self._user}")
+#     def export(self) -> None:
+#         self._user.first_name = self.first_name.data
+#         self._user.last_name = self.last_name.data
 
 
-class ForgotPasswordForm(BaseForm):
-    email = EmailField(
-        "Email Address",
-        filters=[str_strip, str_lower],
-        validators=[Email(), DataRequired()],
-    )
+# class ChangePasswordForm(BaseForm):
+#     current_password = PasswordField("Password", filters=[str_strip], validators=[DataRequired()])
+#     new_password = PasswordField(
+#         "New Password",
+#         filters=[str_strip],
+#         validators=[Length(min=4, max=256)],
+#     )
+#     verify_new_password = PasswordField(
+#         "Repeat New Password", filters=[str_strip], validators=[EqualTo("new_password")]
+#     )
 
-    def export(self) -> str:
-        return self.email.data
+#     _user: User
+
+#     def __init__(self, db: Session, user_id: int | None, **kwargs):
+#         super().__init__(db, **kwargs)
+
+#         user = require_user()
+#         if user.is_admin and user_id:
+#             user = User.get_one(db, user_id)
+#         self._user = user
+
+#     def validate_current_password(self, field: PasswordField) -> None:
+#         if not self._user.check_password(field.data):
+#             raise ValidationError("Invalid password")
+
+#     def export(self) -> None:
+#         self._user.set_password(self.new_password.data)
+#         log.i(f"Change password for {self._user}")
 
 
-class ResetPasswordForm(BaseForm):
-    password = PasswordField("Password", filters=[str_strip], validators=[Length(min=4, max=256)])
-    verify_password = PasswordField(
-        "Repeat Password", filters=[str_strip], validators=[EqualTo("password")]
-    )
+# class ForgotPasswordForm(BaseForm):
+#     email = EmailField(
+#         "Email Address",
+#         filters=[str_strip, str_lower],
+#         validators=[Email(), DataRequired()],
+#     )
 
-    def export(self) -> str:
-        return self.password.data
+#     def export(self) -> str:
+#         return self.email.data
+
+
+# class ResetPasswordForm(BaseForm):
+#     password = PasswordField("Password", filters=[str_strip], validators=[Length(min=4, max=256)])
+#     verify_password = PasswordField(
+#         "Repeat Password", filters=[str_strip], validators=[EqualTo("password")]
+#     )
+
+#     def export(self) -> str:
+#         return self.password.data

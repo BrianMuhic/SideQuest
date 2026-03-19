@@ -16,7 +16,6 @@ from core.app.extensions import extensions
 from core.db.engine import close_request_session, db_session, init_engine
 from core.service.logger import config_logger, set_log_level
 from core.ui.filters import add_template_filters
-from navbar import get_navbar
 
 
 class AttrConfig(Config):
@@ -38,7 +37,6 @@ def _setup_logging() -> None:
     set_log_level(
         logging.CRITICAL,
         "sqlalchemy.pool.impl.QueuePool",
-        "fontTools",
     )
 
     set_log_level(
@@ -77,18 +75,16 @@ def _setup_assets(app: CustomFlask) -> None:
 
 
 def _setup_jinja(app: CustomFlask) -> None:
-    app.jinja_options["line_statement_prefix"] = ">>"
-    app.jinja_options["line_comment_prefix"] = "##"
     app.jinja_env.add_extension("jinja2.ext.loopcontrols")
     add_template_filters(app.jinja_env)
 
     @app.context_processor
     def _inject_globals() -> dict[str, Any]:
         return dict(
-            navbar=get_navbar(),
             mail_redirect=config.MAIL_REDIRECT_TO_DEVELOPER,
             endpoint=endpoint,
             now=datetime.now(LOCAL_ZONEINFO),
+            static_url=lambda name: url_for("static", filename=name),
             img_url=lambda name: url_for("static", filename=f"img/{name}"),
         )
 

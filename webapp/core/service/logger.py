@@ -73,6 +73,7 @@ class CustomFormatter(logging.Formatter):
     DATE_FORMAT: ClassVar[str] = "%m/%d %H:%M:%S"
     STRIP_PREFIXES: ClassVar[list[str]] = [
         "webapp.",
+        "base.",
     ]
 
     def __init__(self):
