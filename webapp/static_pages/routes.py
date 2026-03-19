@@ -5,13 +5,13 @@ from flask.typing import ResponseReturnValue
 
 from account.service import admin_required, login_required
 from core.app import endpoint
-from core.app.custom_blueprint import CustomBlueprint
+from core.app.blueprint import BaseBlueprint
 from core.app.endpoint import Endpoint
 from core.service.logger import get_logger
 
 log = get_logger()
 
-bp = CustomBlueprint(
+bp = BaseBlueprint(
     "static",
     __name__,
 )

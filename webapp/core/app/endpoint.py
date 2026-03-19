@@ -1,15 +1,14 @@
 import sys
 from typing import Any
 
-from flask import url_for
+from flask import redirect, url_for
 from werkzeug import Response
-from werkzeug.utils import redirect
 
 
 class Endpoint:
     """Wrapper for Flask endpoint references with URL generation utilities."""
 
-    def __init__(self, function_name: str, bp_name: str = "webapp") -> None:
+    def __init__(self, function_name: str, bp_name: str) -> None:
         """Initialize an endpoint reference."""
         self.function_name = function_name
         self.bp_name = bp_name
@@ -27,7 +26,7 @@ class Endpoint:
         """Generate a URL for this endpoint."""
         from webapp.config import config
 
-        return config.APP_URL + url_for(self.route, **kwargs)
+        return f"{config.APP_URL}{self.url(**kwargs)}"
 
     def redirect(self, code: int = 302, **kwargs: Any) -> Response:
         """Create a redirect response to this endpoint."""

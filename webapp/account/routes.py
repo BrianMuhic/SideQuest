@@ -16,13 +16,13 @@ from account.service import (
     login_required,
 )
 from core.app import endpoint
-from core.app.custom_blueprint import CustomBlueprint
+from core.app.blueprint import BaseBlueprint
 from core.db.engine import use_db
 from core.service.logger import get_logger
 
 log = get_logger()
 
-bp = CustomBlueprint(
+bp = BaseBlueprint(
     "account",
     __name__,
     url_prefix="/account",
