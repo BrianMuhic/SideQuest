@@ -1,0 +1,45 @@
+{% extends 'partials/base.html' %}
+
+{% block style %}
+<style>
+    .adventure-shell {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 3rem 1.25rem;
+    }
+
+    .adventure-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .adventure-card h1 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+    }
+
+    .adventure-card p {
+        font-size: 1.05rem;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock style %}
+
+{% block body %}
+<div class="adventure-shell">
+    <div class="adventure-card">
+        <h1>Map Out Our Adventure</h1>
+        <p>
+            This is the next phase page.
+        </p>
+        <p>
+            Next, we can add the trip preference questions here like latest arrival time,
+            detour time, and stop categories such as restaurants, museums, attractions,
+            and parks.
+        </p>
+    </div>
+</div>
+{% endblock body %}
