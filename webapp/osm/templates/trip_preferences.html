@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SideQuest - Trip Preferences</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        .page {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 700px;
+            background: white;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            padding: 32px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            margin-bottom: 28px;
+            color: #6b7280;
+            font-size: 16px;
+        }
+
+        .summary-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 28px;
+        }
+
+        .summary-row {
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+
+        .summary-row:last-child {
+            margin-bottom: 0;
+        }
+
+        label.section-label {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 10px;
+            margin-top: 22px;
+            font-size: 16px;
+        }
+
+        input[type="time"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 15px;
+            box-sizing: border-box;
+            background: white;
+        }
+
+        .hint {
+            margin-top: 8px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-top: 12px;
+        }
+
+        .category-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 15px;
+        }
+
+        .category-option input {
+            transform: scale(1.15);
+        }
+
+        .button-row {
+            display: flex;
+            gap: 14px;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            text-decoration: none;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 22px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.95;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="card">
+            <h1>Trip Preferences</h1>
+            <div class="subtitle">
+                Choose your timing and stop preferences for this trip.
+            </div>
+
+            <div class="summary-box">
+                <div class="summary-row"><strong>Start:</strong> {{ start_location or "Not provided" }}</div>
+                <div class="summary-row"><strong>Destination:</strong> {{ end_location or "Not provided" }}</div>
+                <div class="summary-row"><strong>Base Drive Time:</strong> {{ duration_text or "N/A" }}</div>
+                <div class="summary-row"><strong>Base Distance:</strong> {{ distance_text or "N/A" }}</div>
+            </div>
+
+            <form method="POST" action="/trip-preferences">
+                <input type="hidden" name="start_location" value="{{ start_location }}">
+                <input type="hidden" name="end_location" value="{{ end_location }}">
+                <input type="hidden" name="duration_text" value="{{ duration_text }}">
+                <input type="hidden" name="distance_text" value="{{ distance_text }}">
+
+                <label class="section-label" for="latest_arrival_time">Latest Arrival Time</label>
+                <input type="time" id="latest_arrival_time" name="latest_arrival_time" required>
+                <div class="hint">Set the latest time the user wants to arrive.</div>
+
+                <label class="section-label" for="allowed_detour_time">Allowed Detour Time (minutes)</label>
+                <input type="number" id="allowed_detour_time" name="allowed_detour_time" min="0" max="300" placeholder="Example: 20" required>
+                <div class="hint">This is the maximum extra travel time the user is willing to allow for stops.</div>
+
+                <label class="section-label">Stop Categories</label>
+                <div class="category-grid">
+                    <label class="category-option">
+                        <input type="checkbox" name="stop_categories" value="gas">
+                        Gas
+                    </label>
+                    <label class="category-option">
+                        <input type="checkbox" name="stop_categories" value="food">
+                        Food
+                    </label>
+                    <label class="category-option">
+                        <input type="checkbox" name="stop_categories" value="coffee">
+                        Coffee
+                    </label>
+                    <label class="category-option">
+                        <input type="checkbox" name="stop_categories" value="restroom">
+                        Restroom
+                    </label>
+                    <label class="category-option">
+                        <input type="checkbox" name="stop_categories" value="hotel">
+                        Hotel
+                    </label>
+                    <label class="category-option">
+                        <input type="checkbox" name="stop_categories" value="attractions">
+                        Attractions
+                    </label>
+                </div>
+
+                <div class="button-row">
+                    <a href="/" class="btn btn-secondary">Back to Route</a>
+                    <button type="submit" class="btn btn-primary">Continue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
