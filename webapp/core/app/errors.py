@@ -57,7 +57,7 @@ def handle_exception(_err: Exception) -> ResponseReturnValue:
 
 def render_error(name: str, description: str, code: int) -> ResponseReturnValue:
     if request.method == "POST" or request.content_type == "application/json":
-        return description, code
+        return {"error": description}, code
     response = render_template(
         "simple.html",
         title=name,

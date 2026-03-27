@@ -1,0 +1,69 @@
+<div id="panel-prefs" class="panel prefs" hidden>
+    <div class="header">
+        <button class="back" data-panel="route">← Route</button>
+        <h2 class="title">Trip Preferences</h2>
+        <p class="subtitle">Set your timing and stop preferences.</p>
+    </div>
+
+    <div class="body">
+        <div id="prefs-trip-summary" class="trip-summary"></div>
+
+        <div class="form-section">
+            <label for="latest-arrival-time">Latest Arrival Time</label>
+            <input type="time" id="latest-arrival-time" name="latest_arrival_time">
+            <div class="form-hint">The latest you want to arrive at your destination.</div>
+        </div>
+
+        <div class="form-section">
+            <label>Allowed Detour Time</label>
+            <div class="input-pair">
+                <input type="number" id="detour-hours" min="0" max="12" placeholder="Hours">
+                <input type="number" id="detour-minutes" min="0" max="59" placeholder="Minutes">
+            </div>
+            <div class="form-hint">Maximum extra travel time you're willing to add for stops.</div>
+        </div>
+
+        <div class="form-section">
+            <label>Stop Categories</label>
+            <div class="category-grid">
+                <label class="category-option">
+                    <input type="checkbox" name="stop_categories" value="gas">
+                    <span>Gas</span>
+                </label>
+                <label class="category-option">
+                    <input type="checkbox" name="stop_categories" value="food">
+                    <span>Food</span>
+                </label>
+                <label class="category-option">
+                    <input type="checkbox" name="stop_categories" value="coffee">
+                    <span>Coffee</span>
+                </label>
+                <label class="category-option">
+                    <input type="checkbox" name="stop_categories" value="restroom">
+                    <span>Restroom</span>
+                </label>
+                <label class="category-option">
+                    <input type="checkbox" name="stop_categories" value="hotel">
+                    <span>Hotel</span>
+                </label>
+                <label class="category-option">
+                    <input type="checkbox" name="stop_categories" value="attractions">
+                    <span>Attractions</span>
+                </label>
+                <label class="category-option">
+                    <input type="checkbox" name="stop_categories" value="parks">
+                    <span>Parks / Scenic</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <button id="find-stops-button" class="primary-button">
+            Find Recommended Stops
+        </button>
+        <p id="find-stops-loading" class="loading-hint" hidden>
+            Searching for stops along your route…
+        </p>
+    </div>
+</div>

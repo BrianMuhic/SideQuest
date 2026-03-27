@@ -1,0 +1,44 @@
+<div id="panel-route" class="panel route">
+    <div class="header">
+        <h2 class="title">Plan Your Route</h2>
+        <p class="subtitle">Enter your start and destination.</p>
+    </div>
+
+    <div class="body">
+        <form id="route-form">
+            <label class="field-label" for="start-location">Start</label>
+            <div class="input-group">
+                <input
+                    type="text"
+                    id="start-location"
+                    name="start"
+                    placeholder="Enter starting location"
+                    autocomplete="off"
+                >
+                <ul id="start-suggestions" class="suggestions-list"></ul>
+            </div>
+
+            <label class="field-label" for="end-location">Destination</label>
+            <div class="input-group">
+                <input
+                    type="text"
+                    id="end-location"
+                    name="end"
+                    placeholder="Enter destination"
+                    autocomplete="off"
+                >
+                <ul id="end-suggestions" class="suggestions-list"></ul>
+            </div>
+
+            <button type="submit" class="primary-button">Build Route</button>
+        </form>
+
+        <div id="route-summary" class="route-summary"></div>
+    </div>
+
+    <div class="footer" id="route-footer" hidden>
+        <button id="to-prefs-button" class="primary-button">
+            Next: Set Preferences >
+        </button>
+    </div>
+</div>

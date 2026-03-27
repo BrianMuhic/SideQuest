@@ -1,0 +1,79 @@
+/* Shared form components - used across OSM pages */
+
+.form-section {
+	margin-bottom: 1.5rem;
+
+	label {
+		display: block;
+		font-weight: 600;
+		margin-bottom: 0.5rem;
+		color: $text-dark;
+	}
+
+	input[type="time"],
+	input[type="number"],
+	input[type="text"] {
+		width: 100%;
+		padding: 0.85rem 0.95rem;
+		border: 1px solid $gray-border;
+		border-radius: 10px;
+		font-size: 1rem;
+		box-sizing: border-box;
+		background: #ffffff;
+		color: $text-darkest;
+
+		&:focus {
+			outline: none;
+			border-color: $blue-primary;
+			box-shadow: 0 0 0 3px $blue-focus;
+		}
+	}
+}
+
+.form-hint {
+	margin-top: 0.45rem;
+	font-size: 0.95rem;
+	color: $text-muted;
+}
+
+/* Two-column grid for paired inputs (e.g. hours + minutes) */
+.input-pair {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.75rem;
+}
+
+/* Stop category selector */
+.category-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 0.65rem;
+	margin-top: 0.6rem;
+}
+
+.category-option {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	border: 1px solid $gray-light;
+	border-radius: 10px;
+	padding: 0.75rem 0.85rem;
+	background: #f9fafb;
+	cursor: pointer;
+	font-size: 0.9rem;
+	color: $text-dark;
+	transition: border-color 0.15s, background 0.15s, color 0.15s;
+
+	input[type="checkbox"] {
+		transform: scale(1.1);
+		flex-shrink: 0;
+		accent-color: $blue-primary;
+	}
+
+	&:has(input:checked) {
+		border-color: $blue-primary;
+		background: $blue-focus;
+		color: $blue-primary;
+		font-weight: 600;
+	}
+}

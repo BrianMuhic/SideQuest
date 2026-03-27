@@ -3,7 +3,7 @@ a {
 	color: $font-color;
 }
 
-/* Button styles */
+/* Base button styles (auth/global buttons) */
 .button,
 button,
 input[type="submit"] {
@@ -17,6 +17,7 @@ input[type="submit"] {
 	text-decoration: none;
 	font-size: 0.9rem;
 	transition: background-color 0.2s;
+	touch-action: manipulation;
 
 	&:hover {
 		background-color: darken($primary-color, 10%);
@@ -29,5 +30,44 @@ input[type="submit"] {
 		&:hover {
 			background-color: rgba($primary-color, 10%);
 		}
+	}
+}
+
+/* Page action buttons - shared across OSM pages */
+.primary-button,
+.secondary-button {
+	border: none;
+	border-radius: 10px;
+	padding: 0.9rem 1.2rem;
+	font-size: 1rem;
+	font-weight: 600;
+	cursor: pointer;
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: background-color 0.2s ease;
+
+	&:disabled {
+		opacity: 0.65;
+		cursor: not-allowed;
+	}
+}
+
+.primary-button {
+	background: $blue-primary;
+	color: white;
+
+	&:hover:not(:disabled) {
+		background: darken($blue-primary, 8%);
+	}
+}
+
+.secondary-button {
+	background: $gray-light;
+	color: $text-darkest;
+
+	&:hover:not(:disabled) {
+		background: darken($gray-light, 6%);
 	}
 }

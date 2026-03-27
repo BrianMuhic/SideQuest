@@ -15,7 +15,7 @@ class _Missing:
 # ============================== Public Functions ============================== #
 
 
-def get_param(key: str, coerce: Callable[[str], T], default: T = None) -> T:  # type: ignore
+def get_param(key: str, coerce: Callable[[str], T], default: T = None) -> T:  # type: ignore[invalid-parameter-default]
     """Extract and coerce a query parameter from request args."""
 
     try:
@@ -37,7 +37,7 @@ def require_param(key: str, coerce: Callable[[str], T]) -> T:
     return value
 
 
-def get_json(key: str, coerce: Callable[[Any], T], default: T = None) -> T:  # type: ignore
+def get_json(key: str, coerce: Callable[[Any], T], default: T = None) -> T:  # type: ignore[invalid-parameter-default]
     """Extract and coerce a field from the JSON request body."""
     json_data = request.get_json()
     if not isinstance(json_data, Mapping):
@@ -79,9 +79,9 @@ def _coerce_value(raw_value: Any, coerce: Callable[[Any], T]) -> T:
         if isinstance(raw_value, str):
             lower_value = raw_value.lower()
             if lower_value in ("true", "1", "yes", "on"):
-                return True  # type: ignore
+                return True  # type: ignore[invalid-return-type]
             elif lower_value in ("false", "0", "no", "off", ""):
-                return False  # type: ignore
-        return bool(raw_value)  # type: ignore
+                return False  # type: ignore[invalid-return-type]
+        return bool(raw_value)  # type: ignore[invalid-return-type]
 
     return coerce(raw_value)

@@ -1,0 +1,406 @@
+// -------------------------------------------------------------------------------------------------------------------
+// SPA Panel System
+// All panels float as overlays on top of the full-screen map.
+// Child sections use descendant selectors: .panel .header, .panel .body, etc.
+// Variants use multi-class: class="panel route", class="panel prefs", etc.
+// -------------------------------------------------------------------------------------------------------------------
+
+// Base panel chrome
+.panel {
+	position: absolute;
+	top: 24px;
+	left: 84px;
+	z-index: 1000;
+	background: rgba(255, 255, 255, 0.97);
+	border-radius: 16px;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+	display: flex;
+	flex-direction: column;
+	max-height: calc(100vh - 48px);
+	overflow: visible;
+
+	&[hidden] { display: none; }
+
+	// All action elements are full-width inside a panel
+	.primary-button,
+	.secondary-button,
+	.secondary-link {
+		width: 100%;
+	}
+}
+
+// Width variants
+.panel.route { width: 360px; }
+.panel.prefs { width: 420px; }
+.panel.stops { width: 400px; }
+
+// Panel chrome sections
+.panel .header {
+	padding: 1.25rem 1.25rem 0;
+	flex-shrink: 0;
+}
+
+.panel .body {
+	padding: 1rem 1.25rem;
+	overflow-y: auto;
+	flex: 1;
+}
+
+.panel .footer {
+	padding: 1rem 1.25rem;
+	border-top: 1px solid $gray-border;
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+
+	&[hidden] { display: none; }
+}
+
+.panel .title {
+	margin: 0 0 0.2rem;
+	font-size: 1.2rem;
+	font-weight: 700;
+	color: $text-darkest;
+}
+
+.panel .subtitle {
+	margin: 0 0 1rem;
+	font-size: 0.9rem;
+	color: $text-muted;
+}
+
+.panel .back {
+	background: none;
+	border: none;
+	color: $blue-primary;
+	font-size: 0.875rem;
+	font-weight: 600;
+	cursor: pointer;
+	padding: 0;
+	margin-bottom: 0.6rem;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	transition: color 0.15s;
+
+	&:hover { color: darken($blue-primary, 12%); }
+}
+
+// -------------------------------------------------------------------------------------------------------------------
+// Route panel - autocomplete + route summary
+// -------------------------------------------------------------------------------------------------------------------
+
+.field-label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 6px;
+	color: $text-dark;
+}
+
+.input-group {
+	position: relative;
+	margin-bottom: 14px;
+
+	input[type="text"] {
+		width: 100%;
+		padding: 12px 14px;
+		border: 1px solid $gray-border;
+		border-radius: 10px;
+		font-size: 1rem;
+		box-sizing: border-box;
+		background: #ffffff;
+		color: $text-darkest;
+
+		&:focus {
+			outline: none;
+			border-color: $blue-primary;
+			box-shadow: 0 0 0 3px $blue-focus;
+		}
+	}
+}
+
+.suggestions-list {
+	position: fixed;
+	margin: 0;
+	padding: 6px 0;
+	list-style: none;
+	background: #ffffff;
+	border: 1px solid $gray-border;
+	border-radius: 10px;
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+	max-height: 280px;
+	overflow-y: auto;
+	z-index: 1100;
+	display: none;
+
+	&.show { display: block; }
+}
+
+.suggestions-item {
+	padding: 10px 14px;
+	font-size: 0.95rem;
+	color: $text-dark;
+	cursor: pointer;
+	line-height: 1.35;
+
+	&:hover { background: #eff6ff; }
+}
+
+.route-summary {
+	margin-top: 12px;
+	padding: 14px 16px;
+	border-radius: 10px;
+	background: #f3f4f6;
+	color: $text-body;
+	font-size: 0.95rem;
+	display: none;
+}
+
+.route-summary-list {
+	margin: 0;
+	padding-left: 20px;
+
+	li { margin-bottom: 6px; }
+	li:last-child { margin-bottom: 0; }
+}
+
+// -------------------------------------------------------------------------------------------------------------------
+// Preferences panel - trip summary
+// -------------------------------------------------------------------------------------------------------------------
+
+.trip-summary {
+	background: #f9fafb;
+	border: 1px solid $gray-light;
+	border-radius: 12px;
+	padding: 0.85rem 1rem;
+	margin-bottom: 1.25rem;
+}
+
+.trip-summary-row {
+	margin-bottom: 0.5rem;
+	font-size: 0.9rem;
+	color: $text-body;
+
+	&:last-child { margin-bottom: 0; }
+}
+
+.loading-hint {
+	margin: 0.65rem 0 0;
+	font-size: 0.875rem;
+	color: $text-muted;
+	text-align: center;
+
+	&::before {
+		font-family: "Font Awesome 7 Free";
+		font-weight: 900;
+		content: "\f1ce"; // fa-circle-notch
+		margin-right: 0.4em;
+		display: inline-block;
+		animation: fa-spin 2s linear infinite;
+		-webkit-font-smoothing: antialiased;
+		font-style: normal;
+		line-height: 1;
+	}
+}
+
+// -------------------------------------------------------------------------------------------------------------------
+// Stops panel - sections, stop cards, selected list, summary pills
+// -------------------------------------------------------------------------------------------------------------------
+
+.panel-section {
+	margin-bottom: 1.5rem;
+
+	&:last-child { margin-bottom: 0; }
+}
+
+.panel-section__title {
+	font-size: 0.8rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: $text-muted;
+	margin: 0 0 0.65rem;
+}
+
+.summary-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-top: 0.75rem;
+}
+
+.summary-pill {
+	background: #f3f4f6;
+	border-radius: 999px;
+	padding: 0.4rem 0.75rem;
+	font-size: 0.85rem;
+	color: $text-darkest;
+}
+
+// Stop cards (rendered client-side by buildStopCard in stops.js)
+.stop-card {
+	background: #ffffff;
+	border: 1px solid $gray-light;
+	border-radius: 16px;
+	overflow: hidden;
+	margin-bottom: 0.75rem;
+	display: flex;
+	flex-direction: column;
+}
+
+.stop-photo {
+	height: 160px;
+	background: linear-gradient(135deg, #dbeafe, #e0e7ff, #fce7f3);
+	display: flex;
+	align-items: flex-end;
+	padding: 0.75rem;
+	color: $text-dark;
+	font-weight: 700;
+	font-size: 1rem;
+}
+
+.stop-photo--image { padding: 0; }
+
+.stop-photo-img {
+	width: 100%;
+	height: 160px;
+	object-fit: cover;
+	display: block;
+}
+
+.stop-body { padding: 0.85rem; }
+
+.stop-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	margin-bottom: 0.6rem;
+}
+
+.meta-badge {
+	background: #eef2ff;
+	color: #3730a3;
+	border-radius: 999px;
+	padding: 0.25rem 0.6rem;
+	font-size: 0.8rem;
+	font-weight: 600;
+}
+
+.stop-title-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 0.6rem;
+
+	h3 { margin: 0; font-size: 1rem; line-height: 1.35; color: $text-darkest; }
+}
+
+.plus-button {
+	border: none;
+	width: 36px;
+	height: 36px;
+	border-radius: 999px;
+	background: $blue-primary;
+	color: white;
+	font-size: 1.3rem;
+	cursor: pointer;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	&.added { background: #16a34a; }
+}
+
+.address {
+	color: $text-muted;
+	font-size: 0.875rem;
+	margin: 0.4rem 0 0.6rem;
+}
+
+.description {
+	color: $text-body;
+	font-size: 0.875rem;
+	margin: 0;
+	line-height: 1.5;
+}
+
+// Selected stops list
+.selected-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin-bottom: 0.75rem;
+}
+
+.selected-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.5rem;
+	background: #f9fafb;
+	border-radius: 10px;
+	padding: 0.65rem 0.75rem;
+}
+
+.selected-item-name { font-weight: 700; font-size: 0.9rem; color: $text-darkest; }
+
+.selected-item-category { font-size: 0.8rem; color: $text-muted; }
+
+.selected-remove {
+	border: none;
+	background: #fee2e2;
+	color: #b91c1c;
+	border-radius: 999px;
+	width: 28px;
+	height: 28px;
+	cursor: pointer;
+	font-weight: 700;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.secondary-link {
+	display: inline-flex;
+	text-decoration: none;
+	background: $gray-light;
+	color: $text-darkest;
+	border-radius: 12px;
+	padding: 0.75rem 1rem;
+	font-weight: 700;
+	font-size: 0.9rem;
+	justify-content: center;
+	box-sizing: border-box;
+}
+
+.muted-text {
+	color: $text-muted;
+	font-size: 0.9rem;
+}
+
+// -------------------------------------------------------------------------------------------------------------------
+// Responsive
+// -------------------------------------------------------------------------------------------------------------------
+
+@media (max-width: $bp-mobile) {
+	// Bottom-sheet pattern: panel anchors to bottom of screen, full width
+	.panel {
+		top: auto;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		max-height: 65vh;
+		border-radius: 20px 20px 0 0;
+
+		&.route, &.prefs, &.stops { width: 100%; }
+	}
+
+	// Larger tap targets on mobile
+	.panel .back { padding: 0.25rem 0; }
+
+	// Suggestions dropdown: clamp to viewport width on small screens
+	.suggestions-list { max-width: calc(100vw - 2rem); }
+}
