@@ -1,262 +1,5 @@
 {% extends 'partials/base.html' %}
 
-{% block head %}
-<link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-/>
-{% endblock head %}
-
-{% block style %}
-<style>
-    .stops-shell {
-        max-width: 1250px;
-        margin: 0 auto;
-        padding: 2rem 1.25rem 3rem;
-    }
-
-    
-    html, body {
-        height: auto;
-        overflow-y: auto;
-    }
-
-    main {
-        height: auto !important;
-        overflow: visible !important;
-    }
-
-    .stops-shell {
-        max-width: 1250px;
-        margin: 0 auto;
-        padding: 2rem 1.25rem 3rem;
-    }
-    .hero-card {
-        background: #ffffff;
-        border-radius: 24px;
-        padding: 1.5rem;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
-        margin-bottom: 1.5rem;
-    }
-
-    .hero-card h1 {
-        margin-top: 0;
-        margin-bottom: 0.5rem;
-    }
-
-    .summary-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        margin-top: 1rem;
-    }
-
-    .summary-pill {
-        background: #f3f4f6;
-        border-radius: 999px;
-        padding: 0.6rem 0.95rem;
-        font-size: 0.95rem;
-        color: #111827;
-    }
-
-    .layout-grid {
-        display: grid;
-        grid-template-columns: 360px 1fr;
-        gap: 1.5rem;
-        align-items: start;
-    }
-
-    .side-panel {
-        position: sticky;
-        top: 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .panel-card {
-        background: #ffffff;
-        border-radius: 24px;
-        padding: 1.1rem;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
-    }
-
-    #route-map {
-        width: 100%;
-        height: 320px;
-        border-radius: 18px;
-    }
-
-    .selected-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.65rem;
-        margin-top: 0.8rem;
-    }
-
-    .selected-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.6rem;
-        background: #f9fafb;
-        border-radius: 14px;
-        padding: 0.75rem 0.85rem;
-    }
-
-    .selected-remove {
-        border: none;
-        background: #fee2e2;
-        color: #b91c1c;
-        border-radius: 999px;
-        width: 32px;
-        height: 32px;
-        cursor: pointer;
-        font-weight: 700;
-    }
-
-    .feed-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-        gap: 1rem;
-    }
-
-    .stop-card {
-        background: #ffffff;
-        border-radius: 24px;
-        overflow: hidden;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
-        display: flex;
-        flex-direction: column;
-    }
-
-    .stop-photo {
-        height: 180px;
-        background: linear-gradient(135deg, #dbeafe, #e0e7ff, #fce7f3);
-        display: flex;
-        align-items: end;
-        justify-content: start;
-        padding: 1rem;
-        color: #1f2937;
-        font-weight: 700;
-        font-size: 1.1rem;
-    }
-
-    .stop-body {
-        padding: 1rem;
-    }
-
-    .stop-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 0.75rem;
-    }
-
-    .meta-badge {
-        background: #eef2ff;
-        color: #3730a3;
-        border-radius: 999px;
-        padding: 0.35rem 0.7rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-    }
-
-    .stop-title-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: start;
-        gap: 0.75rem;
-    }
-
-    .stop-title-row h3 {
-        margin: 0;
-        line-height: 1.35;
-    }
-
-    .plus-button {
-        border: none;
-        width: 40px;
-        height: 40px;
-        border-radius: 999px;
-        background: #2563eb;
-        color: white;
-        font-size: 1.4rem;
-        cursor: pointer;
-        flex-shrink: 0;
-    }
-
-    .plus-button.added {
-        background: #16a34a;
-    }
-
-    .address {
-        color: #6b7280;
-        font-size: 0.95rem;
-        margin: 0.5rem 0 0.8rem;
-    }
-
-    .description {
-        color: #374151;
-        margin: 0;
-        line-height: 1.5;
-    }
-
-    .action-button {
-        width: 100%;
-        border: none;
-        border-radius: 14px;
-        padding: 0.95rem 1rem;
-        font-size: 1rem;
-        font-weight: 700;
-        cursor: pointer;
-    }
-
-    .primary-action {
-        background: #111827;
-        color: white;
-    }
-
-    .primary-action:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
-    }
-
-    .secondary-link {
-        display: inline-flex;
-        text-decoration: none;
-        background: #e5e7eb;
-        color: #111827;
-        border-radius: 14px;
-        padding: 0.85rem 1rem;
-        font-weight: 700;
-        justify-content: center;
-        width: 100%;
-        box-sizing: border-box;
-        margin-top: 0.75rem;
-    }
-
-    .empty-state {
-        background: #ffffff;
-        border-radius: 24px;
-        padding: 2rem;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
-    }
-
-    @media (max-width: 980px) {
-        .layout-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .side-panel {
-            position: static;
-        }
-    }
-</style>
-{% endblock style %}
-
 {% block body %}
 <div class="stops-shell">
     <div class="hero-card">
@@ -355,124 +98,371 @@
 {% endblock body %}
 
 {% block script %}
-<script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-></script>
-
 <script>
-    const routeGeojson = JSON.parse('{{ (route_geojson or {})|tojson|safe }}');
-    const selectedStops = [];
-    const selectedList = document.getElementById("selected-list");
-    const previewRouteButton = document.getElementById("preview-route-button");
+    
+const routeGeojson = JSON.parse('{{ (route_geojson or {})|tojson|safe }}');
+const selectedStops = [];
+const selectedList = document.getElementById("selected-list");
+const previewRouteButton = document.getElementById("preview-route-button");
 
-    const map = L.map("route-map");
+const map = L.map("route-map");
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap contributors"
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors"
+}).addTo(map);
+
+let routeLayer = null;
+
+if (routeGeojson && routeGeojson.coordinates) {
+    routeLayer = L.geoJSON(routeGeojson, {
+        style: {
+            color: "#2563eb",
+            weight: 5,
+            opacity: 0.9
+        }
     }).addTo(map);
 
-    let routeLayer = null;
+    const bounds = routeLayer.getBounds();
+    if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [30, 30] });
+    }
+} else {
+    map.setView([37.2296, -80.4139], 7);
+}
 
-    if (routeGeojson && routeGeojson.coordinates) {
-        routeLayer = L.geoJSON(routeGeojson, {
-            style: {
-                color: "#2563eb",
-                weight: 5,
-                opacity: 0.9
-            }
-        }).addTo(map);
-
-        const bounds = routeLayer.getBounds();
-        if (bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [30, 30] });
-        }
-    } else {
-        map.setView([37.2296, -80.4139], 7);
+function renderSelectedStops() {
+    if (!selectedStops.length) {
+        selectedList.innerHTML = '<div style="color: #6b7280;">No stops selected yet.</div>';
+        previewRouteButton.disabled = true;
+        return;
     }
 
-    function renderSelectedStops() {
-        if (!selectedStops.length) {
-            selectedList.innerHTML = '<div style="color: #6b7280;">No stops selected yet.</div>';
-            previewRouteButton.disabled = true;
-            return;
-        }
+    selectedList.innerHTML = "";
+    previewRouteButton.disabled = false;
 
-        selectedList.innerHTML = "";
-        previewRouteButton.disabled = false;
+    selectedStops.forEach((stop, index) => {
+        const row = document.createElement("div");
+        row.className = "selected-item";
+        row.innerHTML = `
+            <div>
+                <div style="font-weight: 700;">${stop.name}</div>
+                <div style="font-size: 0.9rem; color: #6b7280;">${stop.category}</div>
+            </div>
+            <button type="button" class="selected-remove" data-index="${index}">×</button>
+        `;
+        selectedList.appendChild(row);
+    });
 
-        selectedStops.forEach((stop, index) => {
-            const row = document.createElement("div");
-            row.className = "selected-item";
-            row.innerHTML = `
-                <div>
-                    <div style="font-weight: 700;">${stop.name}</div>
-                    <div style="font-size: 0.9rem; color: #6b7280;">${stop.category}</div>
-                </div>
-                <button type="button" class="selected-remove" data-index="${index}">×</button>
-            `;
-            selectedList.appendChild(row);
-        });
-
-        document.querySelectorAll(".selected-remove").forEach((button) => {
-            button.addEventListener("click", function () {
-                const index = Number(button.dataset.index);
-                const removed = selectedStops[index];
-                selectedStops.splice(index, 1);
-
-                const matchingCard = document.querySelector(`[data-stop-id="${removed.id}"] .plus-button`);
-                if (matchingCard) {
-                    matchingCard.classList.remove("added");
-                    matchingCard.textContent = "+";
-                }
-
-                renderSelectedStops();
-            });
-        });
-    }
-
-    document.querySelectorAll(".stop-card").forEach((card) => {
-        const button = card.querySelector(".plus-button");
-
+    document.querySelectorAll(".selected-remove").forEach((button) => {
         button.addEventListener("click", function () {
-            const stopId = card.dataset.stopId;
+            const index = Number(button.dataset.index);
+            const removed = selectedStops[index];
+            selectedStops.splice(index, 1);
 
-            const alreadyAdded = selectedStops.some((stop) => stop.id === stopId);
-            if (alreadyAdded) {
-                return;
+            const matchingCard = document.querySelector(`[data-stop-id="${removed.id}"] .plus-button`);
+            if (matchingCard) {
+                matchingCard.classList.remove("added");
+                matchingCard.textContent = "+";
             }
 
-            const stop = {
-                id: stopId,
-                name: card.dataset.stopName,
-                lat: Number(card.dataset.stopLat),
-                lon: Number(card.dataset.stopLon),
-                category: card.dataset.stopCategory,
-                address: card.dataset.stopAddress
-            };
-
-            selectedStops.push(stop);
-            button.classList.add("added");
-            button.textContent = "✓";
             renderSelectedStops();
-
-            L.marker([stop.lat, stop.lon])
-                .addTo(map)
-                .bindPopup(`<strong>${stop.name}</strong><br>${stop.category}`);
         });
     });
+}
 
-    previewRouteButton.addEventListener("click", function () {
-        if (!selectedStops.length) {
+document.querySelectorAll(".stop-card").forEach((card) => {
+    const button = card.querySelector(".plus-button");
+
+    button.addEventListener("click", function () {
+        const stopId = card.dataset.stopId;
+
+        const alreadyAdded = selectedStops.some((stop) => stop.id === stopId);
+        if (alreadyAdded) {
             return;
         }
 
-        const names = selectedStops.map((stop) => stop.name).join(", ");
-        alert(`Next step: preview the full route with these stops:\n\n${names}`);
-    });
+        const stop = {
+            id: stopId,
+            name: card.dataset.stopName,
+            lat: Number(card.dataset.stopLat),
+            lon: Number(card.dataset.stopLon),
+            category: card.dataset.stopCategory,
+            address: card.dataset.stopAddress
+        };
 
-    renderSelectedStops();
+        selectedStops.push(stop);
+        button.classList.add("added");
+        button.textContent = "✓";
+        renderSelectedStops();
+
+        L.marker([stop.lat, stop.lon])
+            .addTo(map)
+            .bindPopup(`<strong>${stop.name}</strong><br>${stop.category}`);
+    });
+});
+
+previewRouteButton.addEventListener("click", function () {
+    if (!selectedStops.length) {
+        return;
+    }
+
+    const names = selectedStops.map((stop) => stop.name).join(", ");
+    alert(`Next step: preview the full route with these stops:\n\n${names}`);
+});
+
+renderSelectedStops();
+
 </script>
 {% endblock script %}
+
+
+{% block style %}
+<style>
+
+.stops-shell {
+    max-width: 1250px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 3rem;
+}
+
+
+html, body {
+    height: auto;
+    overflow-y: auto;
+}
+
+main {
+    height: auto !important;
+    overflow: visible !important;
+}
+
+.stops-shell {
+    max-width: 1250px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 3rem;
+}
+.hero-card {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 1.5rem;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+    margin-bottom: 1.5rem;
+}
+
+.hero-card h1 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.summary-pill {
+    background: #f3f4f6;
+    border-radius: 999px;
+    padding: 0.6rem 0.95rem;
+    font-size: 0.95rem;
+    color: #111827;
+}
+
+.layout-grid {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.side-panel {
+    position: sticky;
+    top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.panel-card {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 1.1rem;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+#route-map {
+    width: 100%;
+    height: 320px;
+    border-radius: 18px;
+}
+
+.selected-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-top: 0.8rem;
+}
+
+.selected-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+    background: #f9fafb;
+    border-radius: 14px;
+    padding: 0.75rem 0.85rem;
+}
+
+.selected-remove {
+    border: none;
+    background: #fee2e2;
+    color: #b91c1c;
+    border-radius: 999px;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.feed-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 1rem;
+}
+
+.stop-card {
+    background: #ffffff;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+}
+
+.stop-photo {
+    height: 180px;
+    background: linear-gradient(135deg, #dbeafe, #e0e7ff, #fce7f3);
+    display: flex;
+    align-items: end;
+    justify-content: start;
+    padding: 1rem;
+    color: #1f2937;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.stop-body {
+    padding: 1rem;
+}
+
+.stop-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.meta-badge {
+    background: #eef2ff;
+    color: #3730a3;
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.stop-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 0.75rem;
+}
+
+.stop-title-row h3 {
+    margin: 0;
+    line-height: 1.35;
+}
+
+.plus-button {
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: white;
+    font-size: 1.4rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.plus-button.added {
+    background: #16a34a;
+}
+
+.address {
+    color: #6b7280;
+    font-size: 0.95rem;
+    margin: 0.5rem 0 0.8rem;
+}
+
+.description {
+    color: #374151;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.action-button {
+    width: 100%;
+    border: none;
+    border-radius: 14px;
+    padding: 0.95rem 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.primary-action {
+    background: #111827;
+    color: white;
+}
+
+.primary-action:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.secondary-link {
+    display: inline-flex;
+    text-decoration: none;
+    background: #e5e7eb;
+    color: #111827;
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    font-weight: 700;
+    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0.75rem;
+}
+
+.empty-state {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 980px) {
+    .layout-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .side-panel {
+        position: static;
+    }
+}
+
+</style>
+{% endblock style %}
