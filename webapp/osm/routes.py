@@ -19,11 +19,6 @@ def home() -> ResponseReturnValue:
     return render_template("index.html", title="SideQuest")
 
 
-@bp.get("/route")
-def route_detail() -> ResponseReturnValue:
-    return render_template("route_detail.html", title="Your Route — SideQuest")
-
-
 # ============================== API ============================== #
 
 _CACHE_HEADER = "public, max-age=3600"
