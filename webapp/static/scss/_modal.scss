@@ -1,6 +1,6 @@
 .modal {
 	position: fixed;
-	z-index: 100;
+	z-index: 1200;
 	background-color: $bg-color;
 	border: 1px solid rgba(255, 255, 255, 0.15);
 	border-radius: 6px;
@@ -25,8 +25,18 @@
 
 .modal_tab {
 	cursor: pointer;
+	border: none;
+	background: transparent;
+	color: $font-color;
+	padding: 0;
+	font-size: 0.95rem;
 	opacity: 0.45;
 	&.active { opacity: 1; }
+
+	&:hover {
+		opacity: 0.75;
+		background: transparent;
+	}
 }
 
 .modal_body {

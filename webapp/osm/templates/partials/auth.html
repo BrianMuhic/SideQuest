@@ -1,0 +1,60 @@
+<div id="auth-modal" class="modal top-right">
+    <div class="guest-show">
+        <div class="modal_header">
+            <button id="tab-login" class="modal_tab active" type="button" onclick="authTab('login')">
+                Sign In
+            </button>
+            <button id="tab-register" class="modal_tab" type="button" onclick="authTab('register')">
+                Sign Up
+            </button>
+        </div>
+
+        <div class="modal_body">
+            <form id="login-form">
+                <div class="field">
+                    <input type="text" name="username" placeholder="Username" autocomplete="username" required>
+                </div>
+                <div class="field">
+                    <input type="password" name="password" placeholder="Password" autocomplete="current-password" required>
+                </div>
+                <p id="login-error" class="form-error"></p>
+            </form>
+
+            <form id="register-form" style="display: none;">
+                <div class="field">
+                    <input type="text" name="username" placeholder="Username" autocomplete="username" required>
+                </div>
+                <div class="field">
+                    <input type="password" name="password" placeholder="Password" autocomplete="new-password" required>
+                </div>
+                <div class="field">
+                    <input
+                        type="password"
+                        name="verify_password"
+                        placeholder="Repeat password"
+                        autocomplete="new-password"
+                        required
+                    >
+                </div>
+                <p id="register-error" class="form-error"></p>
+            </form>
+        </div>
+
+        <div class="modal_footer">
+            <button id="auth-btn" class="primary-button" type="button" onclick="authSubmit()">
+                Sign in
+            </button>
+        </div>
+    </div>
+
+    <div class="auth-show">
+        <div class="modal_body">
+            <p>
+                Signed in as <strong id="user-name">{% if current_user.is_authenticated %}{{ current_user.username }}{% endif %}</strong>
+            </p>
+        </div>
+        <div class="modal_footer">
+            <button class="secondary-button" type="button" onclick="authLogout()">Log Out</button>
+        </div>
+    </div>
+</div>
