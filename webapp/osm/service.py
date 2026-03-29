@@ -1,4 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from math import atan2, cos, radians, sin, sqrt
 
 import requests
@@ -218,29 +217,6 @@ def _is_small_local_park(tags: dict) -> bool:
     return False
 
 
-def _build_overpass_query(
-    lat: float,
-    lon: float,
-    radius: int,
-    filters: list[str],
-) -> str:
-    filled = [
-        f.replace("RADIUS", str(radius)).replace("LAT", str(lat)).replace("LON", str(lon))
-        for f in filters
-    ]
-    return f"[out:json][timeout:20];\n(\n{''.join(filled)}\n);\nout center tags 30;\n"
-
-
-def _query_overpass_point(args: tuple[float, float, int, list[str]]) -> list[dict]:
-    lat, lon, radius, filters = args
-    query = _build_overpass_query(lat, lon, radius, filters)
-    try:
-        return _post_overpass(query).get("elements", [])
-    except Exception as e:
-        log.w(f"Overpass query failed at ({lat}, {lon}): {e}")
-        return []
-
-
 def _find_stops_along_route(
     route_geometry: dict,
     stop_categories: list[str],
@@ -252,74 +228,87 @@ def _find_stops_along_route(
     if not sampled_points or not stop_categories:
         return []
 
-    detour_radius_meters = max(1600, min(32000, allowed_detour_minutes * 800))
+    detour_radius_meters = max(1600, min(18000, allowed_detour_minutes * 700))
+    results_by_key: dict[str, dict] = {}
 
     general_filters = _build_general_filters(stop_categories)
     scenic_filters = _build_scenic_filters() if "parks" in stop_categories else []
-    all_filters = general_filters + scenic_filters
 
-    if not all_filters:
-        return []
+    for lon, lat in sampled_points[:8]:
+        current_filters = [
+            item.replace("RADIUS", str(detour_radius_meters))
+            .replace("LAT", str(lat))
+            .replace("LON", str(lon))
+            for item in general_filters + scenic_filters
+        ]
 
-    query_args = [(lat, lon, detour_radius_meters, all_filters) for lon, lat in sampled_points[:16]]
-
-    all_elements: list[dict] = []
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = {pool.submit(_query_overpass_point, args): args for args in query_args}
-        for future in as_completed(futures):
-            all_elements.extend(future.result())
-
-    results_by_key: dict[str, dict] = {}
-    for element in all_elements:
-        tags = element.get("tags", {})
-        name = tags.get("name")
-        if not name:
+        if not current_filters:
             continue
 
-        if "parks" in stop_categories and _is_small_local_park(tags):
+        query = f"""
+[out:json][timeout:20];
+(
+{"".join(current_filters)}
+);
+out center tags 16;
+"""
+
+        try:
+            overpass_data = _post_overpass(query)
+        except Exception as e:
+            log.w(f"Overpass query failed at ({lat}, {lon}): {e}")
             continue
 
-        stop_lat, stop_lon = _extract_center(element)
-        if stop_lat is None or stop_lon is None:
-            continue
+        for element in overpass_data.get("elements", []):
+            tags = element.get("tags", {})
+            name = tags.get("name")
+            if not name:
+                continue
 
-        key = f"{name}-{round(stop_lat, 5)}-{round(stop_lon, 5)}"
-        if key in results_by_key:
-            continue
+            if "parks" in stop_categories and _is_small_local_park(tags):
+                continue
 
-        address_parts = []
-        if tags.get("addr:housenumber") and tags.get("addr:street"):
-            address_parts.append(f"{tags['addr:housenumber']} {tags['addr:street']}")
-        elif tags.get("addr:street"):
-            address_parts.append(tags["addr:street"])
-        if tags.get("addr:city"):
-            address_parts.append(tags["addr:city"])
+            stop_lat, stop_lon = _extract_center(element)
+            if stop_lat is None or stop_lon is None:
+                continue
 
-        results_by_key[key] = {
-            "id": key,
-            "name": name,
-            "category": _category_label(tags),
-            "lat": stop_lat,
-            "lon": stop_lon,
-            "distance_off_route_miles": _nearest_route_distance_miles(
-                stop_lat, stop_lon, route_coordinates
-            ),
-            "description": (
-                tags.get("description")
-                or tags.get("tourism")
-                or tags.get("amenity")
-                or tags.get("leisure")
-                or tags.get("boundary")
-                or "Interesting stop near your route"
-            ),
-            "address": ", ".join(address_parts) if address_parts else "Address not available",
-            "photo_url": _photo_url_from_tags(tags),
-        }
+            key = f"{name}-{round(stop_lat, 5)}-{round(stop_lon, 5)}"
+            if key in results_by_key:
+                continue
+
+            address_parts = []
+            if tags.get("addr:housenumber") and tags.get("addr:street"):
+                address_parts.append(f"{tags['addr:housenumber']} {tags['addr:street']}")
+            elif tags.get("addr:street"):
+                address_parts.append(tags["addr:street"])
+            if tags.get("addr:city"):
+                address_parts.append(tags["addr:city"])
+
+            results_by_key[key] = {
+                "id": key,
+                "name": name,
+                "category": _category_label(tags),
+                "lat": stop_lat,
+                "lon": stop_lon,
+                "distance_off_route_miles": _nearest_route_distance_miles(
+                    stop_lat, stop_lon, route_coordinates
+                ),
+                "description": (
+                    tags.get("description")
+                    or tags.get("tourism")
+                    or tags.get("amenity")
+                    or tags.get("leisure")
+                    or tags.get("boundary")
+                    or "Interesting stop near your route"
+                ),
+                "address": ", ".join(address_parts) if address_parts else "Address not available",
+                "photo_url": _photo_url_from_tags(tags),
+            }
 
     return sorted(
         results_by_key.values(),
         key=lambda item: (item["distance_off_route_miles"], item["name"].lower()),
-    )[:40]
+    )[:20]
 
 
 def _geocode(location: str) -> dict | None:
@@ -392,40 +381,6 @@ def get_location_suggestions(query: str) -> list[dict]:
     ]
     log.i(f"Location suggestions: found {len(suggestions)} for {query!r}")
     return suggestions
-
-
-def get_route_legs(waypoints: list[dict]) -> dict:
-    coords = ";".join(f"{wp['lon']},{wp['lat']}" for wp in waypoints)
-    log.i(f"Route legs: {len(waypoints)} waypoints")
-
-    route_data = _get_json(
-        f"{_OSRM_URL}/{coords}",
-        {"overview": "false", "geometries": "geojson", "steps": "false"},
-    )
-    routes = route_data.get("routes", [])  # type: ignore[unresolved-attribute]
-    if not routes:
-        log.w("No route found for waypoints")
-        raise ValueError("No drivable route was found for the given waypoints.")
-
-    legs = []
-    total_distance = 0.0
-    total_duration = 0.0
-
-    for leg in routes[0].get("legs", []):
-        miles = round(leg["distance"] * 0.000621371, 1)
-        minutes = round(leg["duration"] / 60)
-        legs.append({"distance_miles": miles, "duration_minutes": minutes})
-        total_distance += miles
-        total_duration += minutes
-
-    log.i(
-        f"Route legs: {len(legs)} legs, {round(total_distance, 1)} mi, {round(total_duration)} min"
-    )
-    return {
-        "legs": legs,
-        "total_distance_miles": round(total_distance, 1),
-        "total_duration_minutes": round(total_duration),
-    }
 
 
 def get_route_preview(start: str, end: str) -> dict:
