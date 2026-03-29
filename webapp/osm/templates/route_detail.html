@@ -1,0 +1,55 @@
+{% extends 'partials/base.html' %}
+
+{% block body %}
+
+<div id="map"></div>
+
+<div id="panel-route-detail" class="panel route-detail">
+    <div class="header">
+        <a href="/" class="back">← Back to SideQuest</a>
+        <h2 class="title">Your Route</h2>
+        <div id="route-detail-summary" class="route-detail-summary">
+            <p class="loading-hint">Loading route details…</p>
+        </div>
+    </div>
+
+    <div class="body">
+        <div id="itinerary"></div>
+    </div>
+
+    <div class="footer">
+        <a id="apple-maps-link" class="primary-button" href="#" target="_blank" rel="noopener">
+            Open in Apple Maps
+        </a>
+        <a href="/" class="secondary-link">Start New Route</a>
+    </div>
+</div>
+
+{% endblock body %}
+
+
+{% block script %}
+<script>
+
+$(() => initRouteDetail());
+
+</script>
+{% endblock script %}
+
+
+{% block style %}
+<style>
+
+html, body { height: 100%; overflow: hidden; }
+main { height: 100vh; overflow: hidden; }
+footer { display: none; }
+
+#map {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+</style>
+{% endblock style %}

@@ -326,8 +326,9 @@ function initApp() {
 
     $('#preview-route-button').on('click', function() {
         if (!selectedStops.length) return;
-        const names = selectedStops.map(function(s) { return s.name; }).join(', ');
-        alert('Next step: preview the full route with these stops:\n\n' + names);
+        sessionStorage.setItem('sidequest_route', JSON.stringify(routeData));
+        sessionStorage.setItem('sidequest_stops', JSON.stringify(selectedStops));
+        window.location.href = '/route';
     });
 
     // -----------------------------------------------

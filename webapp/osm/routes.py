@@ -19,6 +19,11 @@ def home() -> ResponseReturnValue:
     return render_template("index.html", title="SideQuest")
 
 
+@bp.get("/route")
+def route_detail() -> ResponseReturnValue:
+    return render_template("route_detail.html", title="Your Route — SideQuest")
+
+
 # ============================== API ============================== #
 
 _CACHE_HEADER = "public, max-age=3600"
@@ -65,6 +70,21 @@ def find_stops() -> ResponseReturnValue:
         "latest_arrival_time": latest_arrival_time,
     }
     return _api_response(data)
+
+
+@bp.post("/api/route-legs")
+def route_legs() -> ResponseReturnValue:
+    waypoints = require_json("waypoints", list)
+
+    if len(waypoints) < 2:
+        raise BadRequest("At least two waypoints are required.")
+
+    try:
+        data = service.get_route_legs(waypoints)
+    except ValueError as e:
+        raise NotFound(str(e))
+
+    return _api_response(data, cache=False)
 
 
 @bp.get("/api/location-suggestions")

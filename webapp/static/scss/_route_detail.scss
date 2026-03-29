@@ -1,0 +1,152 @@
+// -------------------------------------------------------------------------------------------------------------------
+// Route Detail Page — itinerary panel, leg connectors, numbered markers, reorder controls
+// -------------------------------------------------------------------------------------------------------------------
+
+.panel.route-detail { width: 420px; }
+
+.route-detail-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1.25rem;
+	margin-top: 0.75rem;
+}
+
+.route-detail-stat {
+	font-size: 0.9rem;
+	color: $text-body;
+}
+
+// Itinerary list
+
+.itin-waypoint {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.65rem 0.5rem;
+	border-radius: 10px;
+	transition: background 0.15s;
+
+	&:hover { background: #f9fafb; }
+
+	&--fixed {
+		&:hover { background: transparent; }
+	}
+}
+
+.itin-marker {
+	width: 32px;
+	height: 32px;
+	border-radius: 999px;
+	color: white;
+	font-weight: 700;
+	font-size: 0.85rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.itin-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.itin-name {
+	font-weight: 600;
+	font-size: 0.9rem;
+	color: $text-darkest;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.itin-label {
+	font-size: 0.8rem;
+	color: $text-muted;
+	margin-top: 0.1rem;
+}
+
+.itin-actions {
+	display: flex;
+	gap: 0.3rem;
+	flex-shrink: 0;
+}
+
+.itin-btn {
+	border: none;
+	background: #f3f4f6;
+	color: $text-body;
+	border-radius: 8px;
+	width: 30px;
+	height: 30px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.75rem;
+	transition: background 0.15s, color 0.15s;
+
+	&:hover:not(:disabled) {
+		background: $blue-primary;
+		color: white;
+	}
+
+	&:disabled {
+		opacity: 0.3;
+		cursor: default;
+	}
+
+	&.itin-remove:hover:not(:disabled) {
+		background: #fee2e2;
+		color: #b91c1c;
+	}
+}
+
+// Leg connector between waypoints
+
+.leg-connector {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
+	padding: 0.15rem 0 0.15rem 0.5rem;
+	margin-left: 15px;
+}
+
+.leg-line {
+	width: 2px;
+	height: 24px;
+	background: $gray-border;
+	flex-shrink: 0;
+}
+
+.leg-detail {
+	font-size: 0.8rem;
+	color: $text-muted;
+	white-space: nowrap;
+}
+
+// Leaflet numbered marker circles (rendered via L.divIcon)
+
+.route-number-marker {
+	background: transparent !important;
+	border: none !important;
+}
+
+.route-marker-circle {
+	width: 32px;
+	height: 32px;
+	border-radius: 999px;
+	color: white;
+	font-weight: 700;
+	font-size: 0.85rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+// Responsive — bottom sheet on mobile
+
+@media (max-width: $bp-mobile) {
+	.panel.route-detail { width: 100%; }
+}
