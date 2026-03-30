@@ -38,7 +38,19 @@ function initApp() {
     }
 
     $('.panel .back').on('click', function() {
-        showPanel($(this).data('panel'));
+        var target = $(this).data('panel');
+
+        if (target === 'stops') {
+            clearDetailMarkers();
+            drawRoute(routeData);
+            selectedStops.forEach(function(stop) {
+                var marker = L.marker([stop.lat, stop.lon])
+                    .addTo(map).bindPopup('<strong>' + stop.name + '</strong><br>' + stop.category);
+                stopMarkers[stop.id] = marker;
+            });
+        }
+
+        showPanel(target);
     });
 
     // -----------------------------------------------
@@ -326,10 +338,193 @@ function initApp() {
 
     $('#preview-route-button').on('click', function() {
         if (!selectedStops.length) return;
-        sessionStorage.setItem('sidequest_route', JSON.stringify(routeData));
-        sessionStorage.setItem('sidequest_stops', JSON.stringify(selectedStops));
-        window.location.href = '/route';
+        showRouteDetailPanel();
     });
+
+    // -----------------------------------------------
+    // Route detail panel
+    // -----------------------------------------------
+
+    let detailMarkers = [];
+
+    function numberIcon(label, color) {
+        return L.divIcon({
+            className: 'route-number-marker',
+            html: '<div class="route-marker-circle" style="background:' + color + '">' + label + '</div>',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+    }
+
+    function clearDetailMarkers() {
+        detailMarkers.forEach(function(m) { map.removeLayer(m); });
+        detailMarkers = [];
+    }
+
+    function placeDetailMarkers() {
+        clearDetailMarkers();
+        $.each(stopMarkers, function(id, marker) { map.removeLayer(marker); });
+        stopMarkers = {};
+
+        detailMarkers.push(
+            L.marker([routeData.start.lat, routeData.start.lon], { icon: numberIcon('A', '#16a34a') })
+                .addTo(map).bindPopup('<strong>Start</strong><br>' + routeData.start.name)
+        );
+
+        selectedStops.forEach(function(stop, i) {
+            detailMarkers.push(
+                L.marker([stop.lat, stop.lon], { icon: numberIcon(String(i + 1), '#2563eb') })
+                    .addTo(map).bindPopup('<strong>' + stop.name + '</strong><br>' + stop.category)
+            );
+        });
+
+        detailMarkers.push(
+            L.marker([routeData.end.lat, routeData.end.lon], { icon: numberIcon('B', '#dc2626') })
+                .addTo(map).bindPopup('<strong>End</strong><br>' + routeData.end.name)
+        );
+    }
+
+    function buildWaypoints() {
+        var wps = [{ lat: routeData.start.lat, lon: routeData.start.lon }];
+        selectedStops.forEach(function(s) { wps.push({ lat: s.lat, lon: s.lon }); });
+        wps.push({ lat: routeData.end.lat, lon: routeData.end.lon });
+        return wps;
+    }
+
+    function shortName(fullName) {
+        var parts = fullName.split(',');
+        return parts.length > 2 ? parts.slice(0, 2).join(',') : fullName;
+    }
+
+    function legRow(miles, minutes) {
+        return '<div class="leg-connector">' +
+               '<div class="leg-line"></div>' +
+               '<span class="leg-detail">' + miles + ' mi &middot; ' + formatDuration(minutes) + '</span>' +
+               '</div>';
+    }
+
+    function renderItinerary(legs) {
+        var $el = $('#itinerary');
+        $el.empty();
+
+        $el.append(
+            '<div class="itin-waypoint itin-waypoint--fixed">' +
+            '<div class="itin-marker" style="background:#16a34a">A</div>' +
+            '<div class="itin-info"><div class="itin-name">' + shortName(routeData.start.name) + '</div>' +
+            '<div class="itin-label">Start</div></div></div>'
+        );
+
+        selectedStops.forEach(function(stop, i) {
+            if (legs && legs[i]) {
+                $el.append(legRow(legs[i].distance_miles, legs[i].duration_minutes));
+            }
+
+            var isFirst = (i === 0);
+            var isLast  = (i === selectedStops.length - 1);
+
+            $el.append(
+                '<div class="itin-waypoint" data-index="' + i + '">' +
+                '<div class="itin-marker" style="background:#2563eb">' + (i + 1) + '</div>' +
+                '<div class="itin-info">' +
+                  '<div class="itin-name">' + stop.name + '</div>' +
+                  '<span class="meta-badge">' + stop.category + '</span>' +
+                '</div>' +
+                '<div class="itin-actions">' +
+                  '<button type="button" class="itin-btn itin-move-up" data-index="' + i + '"' +
+                    (isFirst ? ' disabled' : '') + ' aria-label="Move up">' +
+                    '<i class="fa-solid fa-chevron-up"></i></button>' +
+                  '<button type="button" class="itin-btn itin-move-down" data-index="' + i + '"' +
+                    (isLast ? ' disabled' : '') + ' aria-label="Move down">' +
+                    '<i class="fa-solid fa-chevron-down"></i></button>' +
+                  '<button type="button" class="itin-btn itin-remove" data-index="' + i + '"' +
+                    ' aria-label="Remove stop">' +
+                    '<i class="fa-solid fa-xmark"></i></button>' +
+                '</div></div>'
+            );
+        });
+
+        if (legs && legs[selectedStops.length]) {
+            $el.append(legRow(legs[selectedStops.length].distance_miles, legs[selectedStops.length].duration_minutes));
+        }
+
+        $el.append(
+            '<div class="itin-waypoint itin-waypoint--fixed">' +
+            '<div class="itin-marker" style="background:#dc2626">B</div>' +
+            '<div class="itin-info"><div class="itin-name">' + shortName(routeData.end.name) + '</div>' +
+            '<div class="itin-label">Destination</div></div></div>'
+        );
+
+        $('.itin-move-up').on('click', function() { moveDetailStop(Number($(this).data('index')), -1); });
+        $('.itin-move-down').on('click', function() { moveDetailStop(Number($(this).data('index')), 1); });
+        $('.itin-remove').on('click', function() { removeDetailStop(Number($(this).data('index'))); });
+    }
+
+    function renderDetailSummary(data) {
+        $('#route-detail-summary').html(
+            '<div class="route-detail-stat"><strong>Stops:</strong> ' + selectedStops.length + '</div>' +
+            '<div class="route-detail-stat"><strong>Total Distance:</strong> ' + data.total_distance_miles + ' mi</div>' +
+            '<div class="route-detail-stat"><strong>Total Drive Time:</strong> ' + formatDuration(data.total_duration_minutes) + '</div>'
+        );
+    }
+
+    function fetchLegs() {
+        postJson('/api/route-legs', { waypoints: buildWaypoints() })
+            .done(function(data) {
+                renderItinerary(data.legs);
+                renderDetailSummary(data);
+                updateAppleMapsLink();
+            })
+            .fail(function() {
+                renderItinerary(null);
+                $('#route-detail-summary').html(
+                    '<p class="muted-text">Could not calculate route details.</p>'
+                );
+            });
+    }
+
+    function moveDetailStop(index, direction) {
+        var newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= selectedStops.length) return;
+
+        var temp = selectedStops[index];
+        selectedStops[index] = selectedStops[newIndex];
+        selectedStops[newIndex] = temp;
+
+        placeDetailMarkers();
+        fetchLegs();
+    }
+
+    function removeDetailStop(index) {
+        selectedStops.splice(index, 1);
+
+        if (!selectedStops.length) {
+            showPanel('stops');
+            renderSelectedStops();
+            return;
+        }
+
+        placeDetailMarkers();
+        fetchLegs();
+    }
+
+    function updateAppleMapsLink() {
+        var saddr = routeData.start.lat + ',' + routeData.start.lon;
+        var daddr = selectedStops.map(function(s) { return s.lat + ',' + s.lon; }).join('+to:');
+        daddr += '+to:' + routeData.end.lat + ',' + routeData.end.lon;
+
+        $('#apple-maps-link').attr('href',
+            'https://maps.apple.com/?saddr=' + saddr + '&daddr=' + daddr + '&dirflg=d'
+        );
+    }
+
+    function showRouteDetailPanel() {
+        clearRouteLayer();
+        routeLayer = mapRouteLayer(map, routeData.route);
+        placeDetailMarkers();
+        mapFitBounds(map, routeLayer);
+        showPanel('route-detail');
+        fetchLegs();
+    }
 
     // -----------------------------------------------
     // Boot
