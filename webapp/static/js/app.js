@@ -475,7 +475,7 @@ function initApp() {
                 mapFitBounds(map, routeLayer);
                 renderItinerary(data.legs);
                 renderDetailSummary(data);
-                updateAppleMapsLink();
+                updateMapsLink();
             })
             .fail(function() {
                 renderItinerary(null);
@@ -510,13 +510,20 @@ function initApp() {
         fetchLegs();
     }
 
-    function updateAppleMapsLink() {
+    function updateMapsLink() {
         var saddr = routeData.start.lat + ',' + routeData.start.lon;
         var daddr = selectedStops.map(function(s) { return s.lat + ',' + s.lon; }).join('+to:');
         daddr += '+to:' + routeData.end.lat + ',' + routeData.end.lon;
 
         $('#apple-maps-link').attr('href',
             'https://maps.apple.com/?saddr=' + saddr + '&daddr=' + daddr + '&dirflg=d'
+        );
+
+        daddr = routeData.end.lat + ',' + routeData.end.lon;
+        var waypoints = selectedStops.map(function(s) { return s.lat + ',' + s.lon; }).join('|');
+
+        $('#google-maps-link').attr('href',
+            'https://www.google.com/maps/dir/?api=1&origin=' + saddr + '&destination=' + daddr + '&waypoints=' + waypoints + '&travelmode=driving'
         );
     }
 
