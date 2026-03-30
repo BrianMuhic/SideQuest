@@ -400,7 +400,7 @@ def get_route_legs(waypoints: list[dict]) -> dict:
 
     route_data = _get_json(
         f"{_OSRM_URL}/{coords}",
-        {"overview": "false", "geometries": "geojson", "steps": "false"},
+        {"overview": "full", "geometries": "geojson", "steps": "false"},
     )
     routes = route_data.get("routes", [])  # type: ignore[unresolved-attribute]
     if not routes:
@@ -425,6 +425,7 @@ def get_route_legs(waypoints: list[dict]) -> dict:
         "legs": legs,
         "total_distance_miles": round(total_distance, 1),
         "total_duration_minutes": round(total_duration),
+        "route_geojson": routes[0].get("geometry"),
     }
 
 

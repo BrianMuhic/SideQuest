@@ -470,6 +470,9 @@ function initApp() {
     function fetchLegs() {
         postJson('/api/route-legs', { waypoints: buildWaypoints() })
             .done(function(data) {
+                map.removeLayer(routeLayer);
+                routeLayer = mapRouteLayer(map, data.route_geojson);
+                mapFitBounds(map, routeLayer);
                 renderItinerary(data.legs);
                 renderDetailSummary(data);
                 updateAppleMapsLink();
