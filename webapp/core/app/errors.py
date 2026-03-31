@@ -1,6 +1,6 @@
 from http import HTTPStatus
 
-from flask import Flask, request
+from flask import Flask, request, g
 from flask.templating import render_template
 from flask.typing import ResponseReturnValue
 from werkzeug.exceptions import (
@@ -29,6 +29,7 @@ def register_error_handlers(app: Flask) -> None:
 
 def handle_http_exception(err: HTTPException) -> ResponseReturnValue:
     """Handle general http exceptions and return appropriate details."""
+    g.db_session_needs_rollback = True
 
     if not err.description or err.code in (None, HTTPStatus.INTERNAL_SERVER_ERROR):
         return handle_exception(err)
@@ -44,6 +45,7 @@ def handle_http_exception(err: HTTPException) -> ResponseReturnValue:
 
 def handle_exception(_err: Exception) -> ResponseReturnValue:
     """Log the error (to file and email)."""
+    g.db_session_needs_rollback = True
     log_traceback()
     return render_error(
         name="Internal Server Error",

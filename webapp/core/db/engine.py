@@ -11,7 +11,7 @@ from typing import (
 )
 
 import sqlalchemy
-from flask import g, request
+from flask import g, request, has_request_context
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import (
     Session,
@@ -51,13 +51,14 @@ def close_request_session(exception: BaseException | None = None) -> None:
     """Close the request-scoped database session."""
     session = g.pop("db_session", None)
     start_time = g.pop("db_session_start_time", None)
+    needs_rollback = g.pop("db_session_needs_rollback", False)
 
     if session is not None:
         try:
-            if exception is None:
-                session.commit()
-            else:
+            if needs_rollback:
                 session.rollback()
+            else:
+                session.commit()
         finally:
             session.close()
 
@@ -157,11 +158,12 @@ def _log_slow_transactions(start_time: float) -> None:
 
     dt = default_timer() - start_time
     if dt > config.DB_TIME_WARN_THRESHOLD:
-        route = strip_digits(request.path)
-        if dt > config.DB_TIME_ERROR_THRESHOLD and route not in config.DB_TIME_IGNORE:
-            log.e(f"DB Session too long: {route}\n\t{request.path} ({dt:0.3f}s)")
+        path = request.path if has_request_context() else "<no-request>"
+        route = strip_digits(path)
+        if dt > config.DB_TIME_WARN_THRESHOLD and route not in config.DB_TIME_IGNORE:
+            log.e(f"DB Session too long: {route}\n\t{path} ({dt:0.3f}s)")
         else:
-            log.w(f"DB Session too long: {request.path} ({dt:0.3f}s)")
+            log.w(f"DB Session too long: {path} ({dt:0.3f}s)")
 
 
 def check_database(config_: Any) -> dict[str, Any]:

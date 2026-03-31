@@ -4,32 +4,30 @@ from math import atan2, cos, radians, sin, sqrt
 import requests
 
 from core.service.logger import get_logger
+from config import config
 
 log = get_logger()
-
-_NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-_OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-_OSRM_URL = "https://router.project-osrm.org/route/v1/driving"
-_WIKIMEDIA_URL = "https://commons.wikimedia.org/w/api.php"
-_USER_AGENT_HEADER = {"User-Agent": "SideQuest/1.0"}
-_HTTP_HEADERS = _USER_AGENT_HEADER | {"Accept": "application/json"}
 
 
 # ============================== HTTP Helpers ============================== #
 
 
 def _get_json(url: str, params: dict | None = None) -> dict | list:
-    response = requests.get(url, params=params, timeout=120, headers=_HTTP_HEADERS)
+    headers = {
+        "User-Agent": config.USER_AGENT,
+        "Accept": "application/json",
+    }
+    response = requests.get(url, params=params, timeout=120, headers=headers)
     response.raise_for_status()
     return response.json()
 
 
 def _post_overpass(query: str) -> dict:
     response = requests.post(
-        _OVERPASS_URL,
+        config.OVERPASS_URL,
         data=query,
         timeout=120,
-        headers=_USER_AGENT_HEADER,
+        headers={"User-Agent": config.USER_AGENT},
     )
     response.raise_for_status()
     return response.json()
@@ -114,7 +112,7 @@ def _commons_thumb_from_title(file_title: str) -> str | None:
         clean_title = f"File:{clean_title}"
     try:
         data = _get_json(
-            _WIKIMEDIA_URL,
+            config.WIKIMEDIA_URL,
             {
                 "action": "query",
                 "format": "json",
@@ -319,14 +317,14 @@ def _find_stops_along_route(
 
 def _geocode(location: str) -> dict | None:
     results = _get_json(
-        _NOMINATIM_URL, {"q": location, "format": "jsonv2", "limit": 1, "countrycodes": "us"}
+        config.NOMINATIM_URL, {"q": location, "format": "jsonv2", "limit": 1, "countrycodes": "us"}
     )
     return results[0] if results else None
 
 
 def _get_route(start_lon: float, start_lat: float, end_lon: float, end_lat: float) -> dict | None:
     route_data = _get_json(
-        f"{_OSRM_URL}/{start_lon},{start_lat};{end_lon},{end_lat}",
+        f"{config.OSRM_URL}/{start_lon},{start_lat};{end_lon},{end_lat}",
         {"overview": "full", "geometries": "geojson", "steps": "false"},
     )
     routes = route_data.get("routes", [])  # type: ignore[unresolved-attribute]
@@ -377,7 +375,7 @@ def find_stops(
 def get_location_suggestions(query: str) -> list[dict]:
     log.i(f"Location suggestions: {query!r}")
     data = _get_json(
-        _NOMINATIM_URL,
+        config.NOMINATIM_URL,
         {"q": query, "format": "jsonv2", "limit": 5, "addressdetails": 1, "countrycodes": "us"},
     )
     suggestions = [
@@ -394,7 +392,7 @@ def get_route_legs(waypoints: list[dict]) -> dict:
     log.i(f"Route legs: {len(waypoints)} waypoints")
 
     route_data = _get_json(
-        f"{_OSRM_URL}/{coords}",
+        f"{config.OSRM_URL}/{coords}",
         {"overview": "full", "geometries": "geojson", "steps": "false"},
     )
     routes = route_data.get("routes", [])  # type: ignore[unresolved-attribute]

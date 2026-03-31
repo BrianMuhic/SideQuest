@@ -71,6 +71,13 @@ class Settings(BaseSettings):
     MAIL_USE_TLS: bool = False
     MAIL_USE_SSL: bool = True
 
+    # OSM
+    NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+    OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+    OSRM_URL = "https://router.project-osrm.org/route/v1/driving"
+    WIKIMEDIA_URL = "https://commons.wikimedia.org/w/api.php"
+    USER_AGENT = "SideQuest/1.0"
+
     # Computed
     @computed_field
     def DB_CONNECTION_STRING(self) -> str:  # noqa: N802
