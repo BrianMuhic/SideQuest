@@ -2,10 +2,9 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from account.models import User
-from tests.util import post
 
 from tests.fixtures.account import Constant as AccountConstant
-from tests.util import login, logout
+from tests.util import login, logout, post
 
 # ============================== Helpers ============================== #
 

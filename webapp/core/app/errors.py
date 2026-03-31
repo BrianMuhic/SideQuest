@@ -1,6 +1,6 @@
 from http import HTTPStatus
 
-from flask import Flask, request, g
+from flask import Flask, g, request
 from flask.templating import render_template
 from flask.typing import ResponseReturnValue
 from werkzeug.exceptions import (

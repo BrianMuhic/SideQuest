@@ -11,7 +11,7 @@ from typing import (
 )
 
 import sqlalchemy
-from flask import g, request, has_request_context
+from flask import g, has_request_context, request
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import (
     Session,

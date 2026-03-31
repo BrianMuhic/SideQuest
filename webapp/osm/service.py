@@ -1,10 +1,9 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from math import atan2, cos, radians, sin, sqrt
 
 import requests
 
-from core.service.logger import get_logger
 from config import config
+from core.service.logger import get_logger
 
 log = get_logger()
 
