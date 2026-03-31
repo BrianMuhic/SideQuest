@@ -69,22 +69,7 @@ test-coverage:
 
 # ==================== Database ==================== #
 
-# Run mariadb via container
-db-container:
-    #!/bin/sh
-    if command -v podman &>/dev/null; then 
-        export CMD="podman"
-    elif command -v docker &>/dev/null; then
-        export CMD="docker"
-    else
-        echo "Cannot find podman or docker"
-        exit 1
-    fi
-    mkdir -p ./local/mysql
-    $CMD run --detach --name mariadb -v ./local/mysql:/var/lib/mysql:Z -p 3306:3306 -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 mariadb:latest
-    echo "MariaDB server started (user='root', password='', port=3306)"
-    echo "To stop the server, run '$CMD rm -f mariadb'"
-    echo "To ensure the database is on the most recent version, run 'just db-upgrade'"
+
 
 # Create new migration with message (e.g., just db-migrate "add user table")
 db-migrate message:
@@ -112,6 +97,58 @@ clean:
     rm -rf {{APP_DIR}}/static/build {{APP_DIR}}/static/.webassets* 2>/dev/null
     -find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
     -find . -name "*.pyc" -delete 2>/dev/null
+
+
+# ==================== Containers ==================== #
+
+# Run MariaDB via container
+db-container:
+    #!/bin/sh
+    set -e
+    if command -v podman &>/dev/null; then 
+        export CMD="podman"
+    elif command -v docker &>/dev/null; then
+        export CMD="docker"
+    else
+        echo "Cannot find podman or docker"
+        exit 1
+    fi
+    mkdir -p ./local/mysql
+    $CMD run --detach --name mariadb -v ./local/mysql:/var/lib/mysql:Z -p 3306:3306 -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 mariadb:latest
+    echo "MariaDB server started (user='root', password='', port=3306)"
+    echo "To stop the server, run '$CMD rm -f mariadb'"
+    echo "To ensure the database is on the most recent version, run 'just db-upgrade'"
+
+
+# Run OSRM routing engine via container (Virginia data)
+osrm-container:
+    #!/bin/sh
+    set -e
+    if command -v podman &>/dev/null; then
+        export CMD="podman"
+    elif command -v docker &>/dev/null; then
+        export CMD="docker"
+    else
+        echo "Cannot find podman or docker"
+        exit 1
+    fi
+    mkdir -p ./local/osrm
+    if [ ! -f ./local/osrm/virginia-latest.osm.pbf ]; then
+        echo "Downloading Virginia OSM data..."
+        wget -O ./local/osrm/virginia-latest.osm.pbf https://download.geofabrik.de/north-america/us/virginia-latest.osm.pbf
+    fi
+    if [ ! -f ./local/osrm/virginia-latest.osrm ]; then
+        echo "Extracting..."
+        $CMD run -t -v "${PWD}/local/osrm:/data" osrm/osrm-backend osrm-extract -p /opt/car.lua /data/virginia-latest.osm.pbf
+        echo "Partitioning..."
+        $CMD run -t -v "${PWD}/local/osrm:/data" osrm/osrm-backend osrm-partition /data/virginia-latest.osrm
+        echo "Customizing..."
+        $CMD run -t -v "${PWD}/local/osrm:/data" osrm/osrm-backend osrm-customize /data/virginia-latest.osrm
+    fi
+    $CMD run --detach --name osrm -p 5001:5000 -v "${PWD}/local/osrm:/data" osrm/osrm-backend osrm-routed --algorithm mld /data/virginia-latest.osrm
+    echo "OSRM server started on port 5001"
+    echo "To stop the server, run '$CMD rm -f osrm'"
+    echo "Remember to set OSRM_URL=\"http://127.0.0.1:5001/route/v1/driving\" in your .env"
 
 
 # ==================== Setup ==================== #
