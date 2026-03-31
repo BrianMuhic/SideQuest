@@ -239,7 +239,8 @@ def _find_stops_along_route(
         return []
 
     all_filled_filters = []
-    for lon, lat in sampled_points[:16]:
+    max_points = max(4, 16 // max(1, len(all_filters) // 4))
+    for lon, lat in sampled_points[:max_points]:
         for filter in all_filters:
             all_filled_filters.append(
                 filter.replace("RADIUS", str(detour_radius_meters))
@@ -250,8 +251,16 @@ def _find_stops_along_route(
     if not all_filled_filters:
         return []
 
-    query = f"[out:json][timeout:60];\n(\n{''.join(all_filled_filters)}\n);\nout center tags 30;\n"
-    result = _post_overpass(query)
+    query = f"[out:json][timeout:60];\n(\n{''.join(all_filled_filters)}\n);\nout center tags 100;\n"
+
+    try:
+        log.d(f"Overpass query: {len(all_filled_filters)} filters, {len(query)} chars")
+        result = _post_overpass(query)
+        all_elements = result.get("elements", [])
+        log.d(f"Overpass returned {len(all_elements)} elements")
+    except Exception as e:
+        log.w(f"Overpass query failed: {e}")
+        all_elements = []
 
     all_elements = result.get("elements", [])
 
