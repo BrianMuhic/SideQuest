@@ -218,29 +218,6 @@ def _is_small_local_park(tags: dict) -> bool:
     return False
 
 
-def _build_overpass_query(
-    lat: float,
-    lon: float,
-    radius: int,
-    filters: list[str],
-) -> str:
-    filled = [
-        f.replace("RADIUS", str(radius)).replace("LAT", str(lat)).replace("LON", str(lon))
-        for f in filters
-    ]
-    return f"[out:json][timeout:20];\n(\n{''.join(filled)}\n);\nout center tags 30;\n"
-
-
-def _query_overpass_point(args: tuple[float, float, int, list[str]]) -> list[dict]:
-    lat, lon, radius, filters = args
-    query = _build_overpass_query(lat, lon, radius, filters)
-    try:
-        return _post_overpass(query).get("elements", [])
-    except Exception as e:
-        log.w(f"Overpass query failed at ({lat}, {lon}): {e}")
-        return []
-
-
 def _find_stops_along_route(
     route_geometry: dict,
     stop_categories: list[str],
@@ -261,13 +238,22 @@ def _find_stops_along_route(
     if not all_filters:
         return []
 
-    query_args = [(lat, lon, detour_radius_meters, all_filters) for lon, lat in sampled_points[:16]]
+    all_filled_filters = []
+    for lon, lat in sampled_points[:16]:
+        for filter in all_filters:
+            all_filled_filters.append(
+                filter.replace("RADIUS", str(detour_radius_meters))
+                .replace("LAT", str(lat))
+                .replace("LON", str(lon))
+            )
 
-    all_elements: list[dict] = []
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = {pool.submit(_query_overpass_point, args): args for args in query_args}
-        for future in as_completed(futures):
-            all_elements.extend(future.result())
+    if not all_filled_filters:
+        return []
+
+    query = f"[out:json][timeout:60];\n(\n{''.join(all_filled_filters)}\n);\nout center tags 30;\n"
+    result = _post_overpass(query)
+
+    all_elements = result.get("elements", [])
 
     results_by_key: dict[str, dict] = {}
     for element in all_elements:
