@@ -7,7 +7,39 @@
 
 let authActiveTab = 'login';
 
+function getCsrfToken() {
+	const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+	return tokenMeta ? tokenMeta.getAttribute('content') : '';
+}
+
+function addCsrfToken(formData) {
+	const csrfToken = getCsrfToken();
+	if (csrfToken && !formData.has('csrf_token')) {
+		formData.append('csrf_token', csrfToken);
+	}
+}
+
+function authErrorMessage(xhr, fallbackMessage) {
+	const payload = (xhr && xhr.responseJSON) || {};
+
+	if (payload.error && typeof payload.error === 'string') {
+		return payload.error;
+	}
+
+	const firstValue = Object.values(payload)[0];
+	if (Array.isArray(firstValue) && firstValue.length) {
+		return String(firstValue[0]);
+	}
+	if (typeof firstValue === 'string') {
+		return firstValue;
+	}
+
+	return fallbackMessage;
+}
+
 function authTab(tab) {
+	if (!document.getElementById('auth-modal')) return;
+
 	authActiveTab = tab;
 	document.getElementById('tab-login').classList.toggle('active', tab === 'login');
 	document.getElementById('tab-register').classList.toggle('active', tab === 'register');
@@ -23,9 +55,30 @@ function authSubmit() {
 	else authRegister();
 }
 
+function initAuth() {
+	const authModal = document.getElementById('auth-modal');
+	if (!authModal) return;
+
+	const loginForm = document.getElementById('login-form');
+	const registerForm = document.getElementById('register-form');
+
+	loginForm.addEventListener('submit', function(e) {
+		e.preventDefault();
+		authLogin();
+	});
+
+	registerForm.addEventListener('submit', function(e) {
+		e.preventDefault();
+		authRegister();
+	});
+
+	authTab('login');
+}
+
 function authLogin() {
 	const form = document.getElementById('login-form');
 	const data = new FormData(form);
+	addCsrfToken(data);
 
 	$.ajax({
 		type: 'POST',
@@ -35,19 +88,19 @@ function authLogin() {
 		contentType: false,
 	}).done(function(res) {
 		document.getElementById('login-error').textContent = '';
+		document.getElementById('register-error').textContent = '';
 		document.getElementById('user-name').textContent = res.username;
 		document.body.classList.add('authenticated');
 		form.reset();
 	}).fail(function(xhr) {
-		const errors = xhr.responseJSON || {};
-		const first = Object.values(errors)[0];
-		document.getElementById('login-error').textContent = (first && first[0]) || 'Login failed';
+		document.getElementById('login-error').textContent = authErrorMessage(xhr, 'Login failed');
 	});
 }
 
 function authRegister() {
 	const form = document.getElementById('register-form');
 	const data = new FormData(form);
+	addCsrfToken(data);
 
 	$.ajax({
 		type: 'POST',
@@ -56,14 +109,14 @@ function authRegister() {
 		processData: false,
 		contentType: false,
 	}).done(function(res) {
+		document.getElementById('login-error').textContent = '';
+		document.getElementById('register-error').textContent = '';
 		document.getElementById('user-name').textContent = res.username;
 		document.body.classList.add('authenticated');
 		form.reset();
 		authTab('login');
 	}).fail(function(xhr) {
-		const errors = xhr.responseJSON || {};
-		const first = Object.values(errors)[0];
-		document.getElementById('register-error').textContent = (first && first[0]) || 'Registration failed';
+		document.getElementById('register-error').textContent = authErrorMessage(xhr, 'Registration failed');
 	});
 }
 
@@ -74,6 +127,8 @@ function authLogout() {
 	}).done(function() {
 		document.getElementById('user-name').textContent = '';
 		document.body.classList.remove('authenticated');
+		document.getElementById('login-form').reset();
+		document.getElementById('register-form').reset();
 		authTab('login');
 	}).fail(ajaxFailure);
 }
