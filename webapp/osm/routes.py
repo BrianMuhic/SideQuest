@@ -4,10 +4,14 @@ from typing import Any
 
 from flask import render_template
 from flask.typing import ResponseReturnValue
+from sqlalchemy.orm import Session
 from werkzeug import Response
 from werkzeug.exceptions import BadRequest, NotFound
 
+from account import service as account_service
+from account.service import login_required
 from core.app.blueprint import BaseBlueprint
+from core.db.engine import use_db
 from core.util.request_params import get_json, get_param, require_json
 from osm import service
 
@@ -111,3 +115,50 @@ def route_preview() -> ResponseReturnValue:
         raise NotFound(str(e))
 
     return _api_response(preview)
+
+
+@bp.post("/api/saved-routes")
+@login_required
+@use_db
+def save_route(db: Session) -> ResponseReturnValue:
+    user = account_service.require_user()
+    route_name = get_json("route_name", str, "")
+    start = require_json("start", dict)
+    end = require_json("end", dict)
+    stops = get_json("stops", list, [])
+    route_geojson = require_json("route_geojson", dict)
+    total_distance_miles = get_json("total_distance_miles", float, 0.0)
+    total_duration_minutes = get_json("total_duration_minutes", int, 0)
+
+    try:
+        record = service.save_route_for_user(
+            db=db,
+            user_id=user.id,
+            route_name=route_name,
+            start=start,
+            end=end,
+            stops=stops,
+            route_geojson=route_geojson,
+            total_distance_miles=total_distance_miles,
+            total_duration_minutes=total_duration_minutes,
+        )
+    except ValueError as err:
+        raise BadRequest(str(err))
+
+    return _api_response(
+        {
+            "id": record.id,
+            "name": record.name,
+            "message": "Route saved.",
+        },
+        cache=False,
+    )
+
+
+@bp.get("/api/saved-routes")
+@login_required
+@use_db
+def list_saved_routes(db: Session) -> ResponseReturnValue:
+    user = account_service.require_user()
+    saved_routes = service.list_saved_routes_for_user(db, user.id)
+    return _api_response(saved_routes, cache=False)
