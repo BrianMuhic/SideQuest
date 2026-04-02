@@ -508,14 +508,15 @@ function initApp() {
     }
 
     function updateMapsLink() {
-        var saddr = routeData.start.lat + ',' + routeData.start.lon;
-        var daddr = selectedStops.map(function(s) { return s.lat + ',' + s.lon; }).join('+to:');
-        daddr += '+to:' + routeData.end.lat + ',' + routeData.end.lon;
+        var saddr = 'source=' + routeData.start.lat + '%2C' + routeData.start.lon;
+        var waddr = '&waypoint=' + selectedStops.map(function(s) { return s.lat + '%2C' + s.lon; }).join('&waypoint=');
+        var daddr = '&destination=' + routeData.end.lat + '%2C' + routeData.end.lon;
 
         $('#apple-maps-link').attr('href',
-            'https://maps.apple.com/?saddr=' + saddr + '&daddr=' + daddr + '&dirflg=d'
+            'https://maps.apple.com/directions?' + saddr + waddr + daddr + '&mode=driving'
         );
 
+        saddr = routeData.start.lat + ',' + routeData.start.lon;
         daddr = routeData.end.lat + ',' + routeData.end.lon;
         var waypoints = selectedStops.map(function(s) { return s.lat + ',' + s.lon; }).join('|');
 
