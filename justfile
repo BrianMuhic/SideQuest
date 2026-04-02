@@ -151,6 +151,37 @@ osrm-container:
     echo "Remember to set OSRM_URL=\"http://127.0.0.1:5001/route/v1/driving\" in your .env"
 
 
+# Run Overpass API via container (Virginia data)
+overpass-container:
+    #!/bin/sh
+    set -e
+    if command -v podman &>/dev/null; then
+        export CMD="podman"
+    elif command -v docker &>/dev/null; then
+        export CMD="docker"
+    else
+        echo "Cannot find podman or docker"
+        exit 1
+    fi
+    mkdir -p ./local/overpass
+    if [ ! -f ./local/overpass/osm_base_version ]; then
+        echo "Initializing Overpass database (this may take several minutes)..."
+        $CMD run --rm -i \
+            -e OVERPASS_MODE=init \
+            -e OVERPASS_META=no \
+            -e OVERPASS_PLANET_URL=https://download.geofabrik.de/north-america/us/virginia-latest.osm.pbf \
+            -e OVERPASS_PLANET_PREPROCESS='mv /db/planet.osm.bz2 /db/planet.osm.pbf && osmium cat -o /db/planet.osm.bz2 /db/planet.osm.pbf && rm /db/planet.osm.pbf' \
+            -e OVERPASS_RULES_LOAD=10 \
+            -e OVERPASS_STOP_AFTER_INIT=true \
+            -v "${PWD}/local/overpass:/db" \
+            wiktorn/overpass-api
+    fi
+    $CMD run --detach --name overpass -v "${PWD}/local/overpass:/db" -p 5002:80 wiktorn/overpass-api
+    echo "Overpass API started on port 5002"
+    echo "To stop the server, run '$CMD rm -f overpass'"
+    echo "Remember to set OVERPASS_URL=\"http://127.0.0.1:5002/api/interpreter\" in your .env"
+
+
 # ==================== Setup ==================== #
 
 # Run all setup tasks (only installs if not already installed)
