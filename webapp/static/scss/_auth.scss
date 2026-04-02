@@ -1,0 +1,129 @@
+// Auth widget — icon toggle + expanding dropdown in top-right corner
+
+.auth-widget {
+	position: fixed;
+	top: $panel-offset;
+	right: $panel-offset;
+	z-index: 1200;
+}
+
+.auth-toggle {
+	width: 44px;
+	height: 44px;
+	border-radius: 999px;
+	border: none;
+	background: rgba(255, 255, 255, 0.97);
+	box-shadow: $panel-shadow;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.35rem;
+	color: $text-muted;
+	transition: color 0.15s, box-shadow 0.15s;
+	position: relative;
+	z-index: 2;
+
+	&:hover { color: $text-darkest; }
+}
+
+body.authenticated .auth-toggle {
+	color: $blue-primary;
+}
+
+// When open, blend the icon into the panel
+.auth-widget.open .auth-toggle {
+	box-shadow: none;
+}
+
+// Dropdown expands from behind the icon
+
+.auth-dropdown {
+	position: absolute;
+	top: 0;
+	right: 0;
+	background: rgba(255, 255, 255, 0.97);
+	border-radius: 16px;
+	padding: 3.5rem 1.25rem 1.25rem; // top padding clears the 44px icon
+	min-width: 280px;
+	box-shadow: $panel-shadow;
+
+	&[hidden] { display: none; }
+}
+
+.auth-dropdown .header {
+	display: flex;
+	gap: 1rem;
+	margin-bottom: 1rem;
+}
+
+.auth-tab {
+	cursor: pointer;
+	border: none;
+	background: transparent;
+	color: $text-muted;
+	padding: 0;
+	font-size: 0.95rem;
+	font-weight: 600;
+	transition: color 0.15s;
+
+	&.active { color: $text-darkest; }
+	&:hover { color: $text-dark; }
+}
+
+.auth-dropdown .field {
+	margin-bottom: 0.65rem;
+}
+
+.auth-dropdown input {
+	width: 100%;
+	padding: 0.75rem 0.9rem;
+	border: 1px solid $gray-border;
+	border-radius: 10px;
+	font-size: 0.95rem;
+	background: #ffffff;
+	color: $text-darkest;
+	box-sizing: border-box;
+
+	&:focus {
+		outline: none;
+		border-color: $blue-primary;
+		box-shadow: 0 0 0 3px $blue-focus;
+	}
+
+	&::placeholder {
+		color: $text-muted;
+	}
+}
+
+.auth-dropdown .form-error {
+	color: #ef4444;
+	font-size: 0.85rem;
+	min-height: 1.2em;
+}
+
+.auth-dropdown .footer {
+	margin-top: 1rem;
+
+	.primary-button,
+	.secondary-button {
+		width: 100%;
+	}
+}
+
+.auth-username {
+	color: $text-body;
+	font-size: 0.9rem;
+	margin: 0;
+}
+
+@media (max-width: $bp-mobile) {
+	.auth-widget {
+		top: 12px;
+		right: 12px;
+	}
+
+	.auth-dropdown {
+		min-width: 260px;
+	}
+}

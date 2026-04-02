@@ -9,7 +9,7 @@ html, body {
 	width: 100%;
 	font-family: $primary-font;
 	font-size: 1rem;
-	color: $font-color;
+	color: $text-darkest;
 }
 
 body {
@@ -27,9 +27,9 @@ img {
 	height: auto;
 }
 
-/* Utility classes */
-.center {
-	text-align: center;
+/* Links */
+a {
+	color: $blue-primary;
 }
 
 /* Auth visibility - toggled by body.authenticated */

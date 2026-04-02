@@ -1,41 +1,7 @@
-/* Basic link color */
-a {
-	color: $font-color;
-}
-
-/* Base button styles (auth/global buttons) */
-.button,
-button,
-input[type="submit"] {
-	display: inline-block;
-	padding: 0.5rem 1rem;
-	border: 0;
-	background-color: $primary-color;
-	color: white;
-	border-radius: 9999px;
-	cursor: pointer;
-	text-decoration: none;
-	font-size: 0.9rem;
-	transition: background-color 0.2s;
-	touch-action: manipulation;
-
-	&:hover {
-		background-color: darken($primary-color, 10%);
-	}
-
-	&.cancel {
-		background-color: transparent;
-		color: $primary-color;
-
-		&:hover {
-			background-color: rgba($primary-color, 10%);
-		}
-	}
-}
-
-/* Page action buttons - shared across OSM pages */
+/* Shared button base */
 .primary-button,
-.secondary-button {
+.secondary-button,
+.secondary-link {
 	border: none;
 	border-radius: 10px;
 	padding: 0.9rem 1.2rem;
@@ -46,6 +12,7 @@ input[type="submit"] {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	box-sizing: border-box;
 	transition: background-color 0.2s ease;
 
 	&:disabled {
@@ -63,7 +30,8 @@ input[type="submit"] {
 	}
 }
 
-.secondary-button {
+.secondary-button,
+.secondary-link {
 	background: $gray-light;
 	color: $text-darkest;
 

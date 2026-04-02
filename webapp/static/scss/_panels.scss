@@ -13,7 +13,7 @@
 	z-index: 1000;
 	background: rgba(255, 255, 255, 0.97);
 	border-radius: 16px;
-	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+	box-shadow: $panel-shadow;
 	display: flex;
 	flex-direction: column;
 	max-height: calc(100vh - 48px);
@@ -361,19 +361,6 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-}
-
-.secondary-link {
-	display: inline-flex;
-	text-decoration: none;
-	background: $gray-light;
-	color: $text-darkest;
-	border-radius: 12px;
-	padding: 0.75rem 1rem;
-	font-weight: 700;
-	font-size: 0.9rem;
-	justify-content: center;
-	box-sizing: border-box;
 }
 
 .muted-text {
