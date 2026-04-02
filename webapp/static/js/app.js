@@ -227,7 +227,6 @@ function initApp() {
             end_location:            routeData.end.name,
             duration_text:           formatDuration(routeData.duration_minutes),
             distance_text:           routeData.distance_miles + ' miles',
-            latest_arrival_time:     $('#latest-arrival-time').val(),
             allowed_detour_hours:    parseInt($('#detour-hours').val()   || '0', 10),
             allowed_detour_minutes:  parseInt($('#detour-minutes').val() || '0', 10),
             stop_categories:         categories,
@@ -303,9 +302,6 @@ function initApp() {
             '<div class="summary-pill"><strong>End:</strong> '          + routeData.end.name   + '</div>' +
             '<div class="summary-pill"><strong>Drive Time:</strong> '   + formatDuration(routeData.duration_minutes) + '</div>' +
             '<div class="summary-pill"><strong>Distance:</strong> '     + routeData.distance_miles + ' miles</div>' +
-            (data.latest_arrival_time
-                ? '<div class="summary-pill"><strong>Arrive by:</strong> ' + data.latest_arrival_time + '</div>'
-                : '') +
             (data.allowed_detour_text
                 ? '<div class="summary-pill"><strong>Detour:</strong> '    + data.allowed_detour_text + '</div>'
                 : '')

@@ -44,7 +44,6 @@ def find_stops() -> ResponseReturnValue:
     start_location = require_json("start_location", str)
     end_location = require_json("end_location", str)
     stop_categories = get_json("stop_categories", list, [])
-    latest_arrival_time = get_json("latest_arrival_time", str, "")
     detour_hours = get_json("allowed_detour_hours", int, 0)
     detour_minutes = get_json("allowed_detour_minutes", int, 0)
 
@@ -62,7 +61,6 @@ def find_stops() -> ResponseReturnValue:
         "stops": stops,
         "route_geojson": route_geojson,
         "allowed_detour_text": allowed_detour_text,
-        "latest_arrival_time": latest_arrival_time,
     }
     return _api_response(data)
 
