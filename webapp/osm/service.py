@@ -1,3 +1,4 @@
+import re
 from math import atan2, cos, radians, sin, sqrt
 
 import requests
@@ -8,7 +9,24 @@ from core.service.logger import get_logger
 log = get_logger()
 
 
-# ============================== HTTP Helpers ============================== #
+# Overpass tag filters by category. A leading "~" on a value marks it as a regex.
+_CATEGORY_TAG_FILTERS: dict[str, list[tuple[str, str]]] = {
+    "gas": [("amenity", "fuel")],
+    "food": [("amenity", "restaurant"), ("amenity", "fast_food"), ("amenity", "cafe")],
+    "coffee": [("amenity", "cafe"), ("shop", "coffee")],
+    "restroom": [("amenity", "toilets")],
+    "hotel": [("tourism", "hotel"), ("tourism", "motel"), ("tourism", "guest_house")],
+    "attractions": [("tourism", "museum"), ("tourism", "attraction"), ("tourism", "artwork")],
+}
+
+_SCENIC_FILTERS: list[tuple[str, str]] = [
+    ("tourism", "viewpoint"),
+    ("boundary", "national_park"),
+    ("leisure", "nature_reserve"),
+    ("protect_class", "~^(2|3|5)$"),
+    ("natural", "peak"),
+    ("highway", "trailhead"),
+]
 
 
 def _get_json(url: str, params: dict | None = None) -> dict | list:
@@ -32,9 +50,6 @@ def _post_overpass(query: str) -> dict:
     return response.json()
 
 
-# ============================== Geo Utilities ============================== #
-
-
 def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     earth_radius_miles = 3958.8
     dlat = radians(lat2 - lat1)
@@ -45,16 +60,13 @@ def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> floa
 
 
 def _nearest_route_distance_miles(
-    stop_lat: float,
-    stop_lon: float,
-    route_coordinates: list[list[float]],
+    stop_lat: float, stop_lon: float, route_coordinates: list[list[float]]
 ) -> float:
-    closest = None
-    for lon, lat in route_coordinates:
-        distance = _haversine_miles(stop_lat, stop_lon, lat, lon)
-        if closest is None or distance < closest:
-            closest = distance
-    return round(closest or 0.0, 2)
+    if not route_coordinates:
+        return 0.0
+    return round(
+        min(_haversine_miles(stop_lat, stop_lon, lat, lon) for lon, lat in route_coordinates), 2
+    )
 
 
 def _sample_route_coordinates(
@@ -66,9 +78,6 @@ def _sample_route_coordinates(
     if route_coordinates[-1] not in sampled:
         sampled.append(route_coordinates[-1])
     return sampled
-
-
-# ============================== OSM Data Helpers ============================== #
 
 
 def _extract_center(element: dict) -> tuple[float | None, float | None]:
@@ -139,80 +148,90 @@ def _photo_url_from_tags(tags: dict) -> str | None:
     return None
 
 
-def _build_general_filters(stop_categories: list[str]) -> list[str]:
-    filters = []
-
-    if "gas" in stop_categories:
-        filters.append('nwr(around:RADIUS,LAT,LON)["amenity"="fuel"];')
-
-    if "food" in stop_categories:
-        filters.extend(
-            [
-                'nwr(around:RADIUS,LAT,LON)["amenity"="restaurant"];',
-                'nwr(around:RADIUS,LAT,LON)["amenity"="fast_food"];',
-                'nwr(around:RADIUS,LAT,LON)["amenity"="cafe"];',
-            ]
-        )
-
-    if "coffee" in stop_categories:
-        filters.extend(
-            [
-                'nwr(around:RADIUS,LAT,LON)["amenity"="cafe"];',
-                'nwr(around:RADIUS,LAT,LON)["shop"="coffee"];',
-            ]
-        )
-
-    if "restroom" in stop_categories:
-        filters.append('nwr(around:RADIUS,LAT,LON)["amenity"="toilets"];')
-
-    if "hotel" in stop_categories:
-        filters.extend(
-            [
-                'nwr(around:RADIUS,LAT,LON)["tourism"="hotel"];',
-                'nwr(around:RADIUS,LAT,LON)["tourism"="motel"];',
-                'nwr(around:RADIUS,LAT,LON)["tourism"="guest_house"];',
-            ]
-        )
-
-    if "attractions" in stop_categories:
-        filters.extend(
-            [
-                'nwr(around:RADIUS,LAT,LON)["tourism"="museum"];',
-                'nwr(around:RADIUS,LAT,LON)["tourism"="attraction"];',
-                'nwr(around:RADIUS,LAT,LON)["tourism"="artwork"];',
-            ]
-        )
-
-    return filters
+def _overpass_clause(key: str, value: str, lat: float, lon: float, radius: int) -> str:
+    if value.startswith("~"):
+        return f'nwr(around:{radius},{lat},{lon})["{key}"~"{value[1:]}"];'
+    return f'nwr(around:{radius},{lat},{lon})["{key}"="{value}"];'
 
 
-def _build_scenic_filters() -> list[str]:
-    return [
-        'nwr(around:RADIUS,LAT,LON)["tourism"="viewpoint"];',
-        'nwr(around:RADIUS,LAT,LON)["boundary"="national_park"];',
-        'nwr(around:RADIUS,LAT,LON)["leisure"="nature_reserve"];',
-        'nwr(around:RADIUS,LAT,LON)["protect_class"~"^(2|3|5)$"];',
-        'nwr(around:RADIUS,LAT,LON)["natural"="peak"];',
-        'nwr(around:RADIUS,LAT,LON)["highway"="trailhead"];',
-    ]
+def _tag_matches(tags: dict, key: str, value: str) -> bool:
+    actual = tags.get(key)
+    if actual is None:
+        return False
+    if value.startswith("~"):
+        return bool(re.match(value[1:], actual))
+    return actual == value
 
 
 def _is_small_local_park(tags: dict) -> bool:
-    if tags.get("tourism") == "viewpoint":
-        return False
-    if tags.get("boundary") == "national_park":
-        return False
-    if tags.get("protect_class") in {"2", "3", "5"}:
-        return False
-    if tags.get("leisure") == "nature_reserve":
-        return False
-    if tags.get("natural") == "peak":
-        return False
-    if tags.get("highway") == "trailhead":
-        return False
-    if tags.get("leisure") == "park":
-        return True
-    return False
+    return tags.get("leisure") == "park" and not any(
+        _tag_matches(tags, k, v) for k, v in _SCENIC_FILTERS
+    )
+
+
+def _build_tag_filters(stop_categories: list[str]) -> list[tuple[str, str]]:
+    """Builds the list of Overpass tag filters from stop category names."""
+    tag_filters: list[tuple[str, str]] = []
+    for category in stop_categories:
+        if category in _CATEGORY_TAG_FILTERS:
+            tag_filters.extend(_CATEGORY_TAG_FILTERS[category])
+        elif category == "parks":
+            tag_filters.extend(_SCENIC_FILTERS)
+    return tag_filters
+
+
+def _build_address(tags: dict) -> str:
+    """Assembles a human-readable address string from OSM tags."""
+    address_parts = []
+    if tags.get("addr:housenumber") and tags.get("addr:street"):
+        address_parts.append(f"{tags['addr:housenumber']} {tags['addr:street']}")
+    elif tags.get("addr:street"):
+        address_parts.append(tags["addr:street"])
+    if tags.get("addr:city"):
+        address_parts.append(tags["addr:city"])
+    return ", ".join(address_parts) if address_parts else "Address not available"
+
+
+def _process_overpass_element(
+    element: dict, route_coordinates: list[list[float]], stop_categories: list[str]
+) -> tuple[str, dict] | None:
+    """Validates and converts a single Overpass element into a stop entry, returning None if it should be skipped."""
+    tags = element.get("tags", {})
+    name = tags.get("name")
+    if not name:
+        return None
+
+    if "parks" in stop_categories and _is_small_local_park(tags):
+        return None
+
+    stop_lat, stop_lon = _extract_center(element)
+    if stop_lat is None or stop_lon is None:
+        return None
+
+    key = f"{name}-{round(stop_lat, 5)}-{round(stop_lon, 5)}"
+
+    stop = {
+        "id": key,
+        "name": name,
+        "category": _category_label(tags),
+        "lat": stop_lat,
+        "lon": stop_lon,
+        "distance_off_route_miles": _nearest_route_distance_miles(
+            stop_lat, stop_lon, route_coordinates
+        ),
+        "description": (
+            tags.get("description")
+            or tags.get("tourism")
+            or tags.get("amenity")
+            or tags.get("leisure")
+            or tags.get("boundary")
+            or "Interesting stop near your route"
+        ),
+        "address": _build_address(tags),
+        "photo_url": _photo_url_from_tags(tags),
+    }
+
+    return key, stop
 
 
 def _find_stops_along_route(
@@ -228,85 +247,35 @@ def _find_stops_along_route(
 
     detour_radius_meters = max(1600, min(32000, allowed_detour_minutes * 800))
 
-    general_filters = _build_general_filters(stop_categories)
-    scenic_filters = _build_scenic_filters() if "parks" in stop_categories else []
-    all_filters = general_filters + scenic_filters
+    tag_filters = _build_tag_filters(stop_categories)
 
-    if not all_filters:
+    if not tag_filters:
         return []
 
-    all_filled_filters = []
-    max_points = max(4, 16 // max(1, len(all_filters) // 4))
-    for lon, lat in sampled_points[:max_points]:
-        for filter in all_filters:
-            all_filled_filters.append(
-                filter.replace("RADIUS", str(detour_radius_meters))
-                .replace("LAT", str(lat))
-                .replace("LON", str(lon))
-            )
+    max_points = max(4, 16 // max(1, len(tag_filters) // 4))
+    clauses = [
+        _overpass_clause(key, value, lat, lon, detour_radius_meters)
+        for lon, lat in sampled_points[:max_points]
+        for key, value in tag_filters
+    ]
 
-    if not all_filled_filters:
-        return []
-
-    query = f"[out:json][timeout:60];\n(\n{''.join(all_filled_filters)}\n);\nout center tags 100;\n"
+    query = f"[out:json][timeout:60];\n(\n{''.join(clauses)}\n);\nout center tags 100;\n"
 
     try:
-        log.d(f"Overpass query: {len(all_filled_filters)} filters, {len(query)} chars")
+        log.d(f"Overpass query: {len(clauses)} clauses, {len(query)} chars")
         result = _post_overpass(query)
-        all_elements = result.get("elements", [])
-        log.d(f"Overpass returned {len(all_elements)} elements")
+        log.d(f"Overpass returned {len(result.get('elements', []))} elements")
     except Exception as e:
         log.w(f"Overpass query failed: {e}")
-        all_elements = []
-
-    all_elements = result.get("elements", [])
+        result = {"elements": []}
 
     results_by_key: dict[str, dict] = {}
-    for element in all_elements:
-        tags = element.get("tags", {})
-        name = tags.get("name")
-        if not name:
+    for element in result.get("elements", []):
+        processed = _process_overpass_element(element, route_coordinates, stop_categories)
+        if processed is None or processed[0] in results_by_key:
             continue
-
-        if "parks" in stop_categories and _is_small_local_park(tags):
-            continue
-
-        stop_lat, stop_lon = _extract_center(element)
-        if stop_lat is None or stop_lon is None:
-            continue
-
-        key = f"{name}-{round(stop_lat, 5)}-{round(stop_lon, 5)}"
-        if key in results_by_key:
-            continue
-
-        address_parts = []
-        if tags.get("addr:housenumber") and tags.get("addr:street"):
-            address_parts.append(f"{tags['addr:housenumber']} {tags['addr:street']}")
-        elif tags.get("addr:street"):
-            address_parts.append(tags["addr:street"])
-        if tags.get("addr:city"):
-            address_parts.append(tags["addr:city"])
-
-        results_by_key[key] = {
-            "id": key,
-            "name": name,
-            "category": _category_label(tags),
-            "lat": stop_lat,
-            "lon": stop_lon,
-            "distance_off_route_miles": _nearest_route_distance_miles(
-                stop_lat, stop_lon, route_coordinates
-            ),
-            "description": (
-                tags.get("description")
-                or tags.get("tourism")
-                or tags.get("amenity")
-                or tags.get("leisure")
-                or tags.get("boundary")
-                or "Interesting stop near your route"
-            ),
-            "address": ", ".join(address_parts) if address_parts else "Address not available",
-            "photo_url": _photo_url_from_tags(tags),
-        }
+        key, stop = processed
+        results_by_key[key] = stop
 
     return sorted(
         results_by_key.values(),
@@ -328,9 +297,6 @@ def _get_route(start_lon: float, start_lat: float, end_lon: float, end_lat: floa
     )
     routes = route_data.get("routes", [])  # type: ignore[unresolved-attribute]
     return routes[0] if routes else None
-
-
-# ============================== Public Service Functions ============================== #
 
 
 def friendly_detour_text(hours_value: int, minutes_value: int) -> str:

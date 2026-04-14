@@ -53,7 +53,8 @@ webapp/
 ├── osm/              # Route planning module: geocoding, routing, stop discovery
 ├── core/
 │   ├── app/          # App factory, blueprints, error handlers, extensions
-│   ├── db/           # SQLAlchemy engine, base models, @use_db decorator
+│   ├── db/           # SQLAlchemy engine, base models, utils, @use_db decorator
+│   ├── models/       # Shared models (e.g. EmailLog)
 │   ├── service/      # Logger, emailer
 │   ├── ui/           # BaseForm, WTForms filters and validators
 │   └── util/         # request_params, date, formatting, traceback helpers
@@ -87,8 +88,6 @@ Each feature lives in its own module (`account/`, `osm/`, etc.) with a consisten
 
 ---
 
----
-
 ## Style Guide
 
 ### Backend
@@ -106,10 +105,11 @@ They should **not** contain business logic, API calls, or log statements.
 @bp.post("/api/find-stops")
 def find_stops() -> ResponseReturnValue:
     start_location = require_json("start_location", str)
+    end_location = require_json("end_location", str)
     stop_categories = get_json("stop_categories", list, [])
 
-    stops, route_geojson = service.find_stops(start_location, stop_categories)
-    return _api_response({"stops": stops, "route": route_geojson})
+    stops, route_geojson = service.find_stops(start_location, end_location, stop_categories, 0)
+    return _api_response({"stops": stops, "route_geojson": route_geojson})
 ```
 
 #### Service (`service.py`)

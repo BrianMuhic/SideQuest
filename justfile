@@ -130,13 +130,13 @@ osrm-container:
         exit 1
     fi
     mkdir -p ./local/osrm
-    if [ ! -f ./local/osrm/virginia-latest.osm.pbf ]; then
+    if [ ! -f ./local/virginia-latest.osm.pbf ]; then
         echo "Downloading Virginia OSM data..."
-        wget -O ./local/osrm/virginia-latest.osm.pbf https://download.geofabrik.de/north-america/us/virginia-latest.osm.pbf
+        curl -L -o ./local/virginia-latest.osm.pbf https://download.geofabrik.de/north-america/us/virginia-latest.osm.pbf
     fi
     if [ ! -f ./local/osrm/virginia-latest.osrm ]; then
         echo "Extracting..."
-        $CMD run -t -v "${PWD}/local/osrm:/data" osrm/osrm-backend osrm-extract -p /opt/car.lua /data/virginia-latest.osm.pbf
+        $CMD run -t -v "${PWD}/local/osrm:/data" -v "${PWD}/local/virginia-latest.osm.pbf:/data/virginia-latest.osm.pbf:ro" osrm/osrm-backend osrm-extract -p /opt/car.lua /data/virginia-latest.osm.pbf
         echo "Partitioning..."
         $CMD run -t -v "${PWD}/local/osrm:/data" osrm/osrm-backend osrm-partition /data/virginia-latest.osrm
         echo "Customizing..."
@@ -161,16 +161,28 @@ overpass-container:
         exit 1
     fi
     mkdir -p ./local/overpass
+    if [ ! -f ./local/virginia-latest.osm.pbf ]; then
+        echo "Downloading Virginia OSM data..."
+        curl -L -o ./local/virginia-latest.osm.pbf \
+            https://download.geofabrik.de/north-america/us/virginia-latest.osm.pbf
+    fi
+    if [ ! -f ./local/planet.osm.bz2 ]; then
+        echo "Converting OSM data to bz2 (one-time, takes a few minutes)..."
+        $CMD run --rm \
+            --entrypoint /bin/sh \
+            -v "${PWD}/local:/data" \
+            wiktorn/overpass-api \
+            -c "osmium cat -o /data/planet.osm.bz2 /data/virginia-latest.osm.pbf"
+    fi
     if [ ! -f ./local/overpass/osm_base_version ]; then
         echo "Initializing Overpass database (this may take several minutes)..."
         $CMD run --rm -i \
             -e OVERPASS_MODE=init \
-            -e OVERPASS_META=no \
-            -e OVERPASS_PLANET_URL=https://download.geofabrik.de/north-america/us/virginia-latest.osm.pbf \
-            -e OVERPASS_PLANET_PREPROCESS='mv /db/planet.osm.bz2 /db/planet.osm.pbf && osmium cat -o /db/planet.osm.bz2 /db/planet.osm.pbf && rm /db/planet.osm.pbf' \
+            -e OVERPASS_PLANET_URL=file:///osm/planet.osm.bz2 \
             -e OVERPASS_RULES_LOAD=10 \
             -e OVERPASS_STOP_AFTER_INIT=true \
             -v "${PWD}/local/overpass:/db" \
+            -v "${PWD}/local/planet.osm.bz2:/osm/planet.osm.bz2:ro" \
             wiktorn/overpass-api
     fi
     $CMD run --detach --name overpass -v "${PWD}/local/overpass:/db" -p 5002:80 wiktorn/overpass-api

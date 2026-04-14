@@ -29,8 +29,8 @@ class LoginForm(BaseForm):
         if not super().validate(extra_validators):
             return False
 
-        user = User.with_username(self.db, self.username.data)
-        if not user or not user.check_password(self.password.data):
+        user = User.with_username(self.db, self.username.data)  # type: ignore
+        if not user or not user.check_password(self.password.data):  # type: ignore
             return form_error(self.username, "Invalid username or password")
 
         self.user = user
@@ -57,12 +57,12 @@ class InitialRegistrationForm(BaseForm):
     )
 
     def validate_username(self, field: StringField) -> None:
-        if User.with_username(self.db, field.data):
+        if User.with_username(self.db, field.data):  # type: ignore
             raise ValidationError("This username is already taken")
 
     def export(self) -> User:
         user = User(username=self.username.data)
-        user.set_password(self.password.data)
+        user.set_password(self.password.data)  # type: ignore
         user.add(self.db, flush=True)
 
         log.i(f"Registered {user}")

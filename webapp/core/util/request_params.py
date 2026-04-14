@@ -75,13 +75,13 @@ def _coerce_value(raw_value: Any, coerce: Callable[[Any], T]) -> T:
 
     if coerce is bool:
         if isinstance(raw_value, bool):
-            return raw_value
+            return raw_value  # type: ignore
         if isinstance(raw_value, str):
             lower_value = raw_value.lower()
             if lower_value in ("true", "1", "yes", "on"):
-                return True  # type: ignore[invalid-return-type]
+                return True  # type: ignore
             elif lower_value in ("false", "0", "no", "off", ""):
-                return False  # type: ignore[invalid-return-type]
-        return bool(raw_value)  # type: ignore[invalid-return-type]
+                return False  # type: ignore
+        return bool(raw_value)  # type: ignore
 
     return coerce(raw_value)

@@ -48,19 +48,14 @@ def find_stops() -> ResponseReturnValue:
     detour_minutes = get_json("allowed_detour_minutes", int, 0)
 
     total_detour_minutes = (detour_hours * 60) + detour_minutes
-    allowed_detour_text = service.friendly_detour_text(detour_hours, detour_minutes)
-
-    try:
-        stops, route_geojson = service.find_stops(
-            start_location, end_location, stop_categories, total_detour_minutes
-        )
-    except Exception:
-        stops, route_geojson = [], None
+    stops, route_geojson = service.find_stops(
+        start_location, end_location, stop_categories, total_detour_minutes
+    )
 
     data = {
         "stops": stops,
         "route_geojson": route_geojson,
-        "allowed_detour_text": allowed_detour_text,
+        "allowed_detour_text": service.friendly_detour_text(detour_hours, detour_minutes),
     }
     return _api_response(data)
 
@@ -87,12 +82,7 @@ def location_suggestions() -> ResponseReturnValue:
     if len(query) < 3:
         return _api_response([], cache=False)
 
-    try:
-        suggestions = service.get_location_suggestions(query)
-    except Exception:
-        suggestions = []
-
-    return _api_response(suggestions, cache=False)
+    return _api_response(service.get_location_suggestions(query), cache=False)
 
 
 @bp.get("/api/route-preview")
