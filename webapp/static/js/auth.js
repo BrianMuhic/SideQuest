@@ -37,8 +37,22 @@ function authErrorMessage(xhr, fallbackMessage) {
 	return fallbackMessage;
 }
 
+function authToggle() {
+	const widget = document.getElementById('panel-auth');
+	const dropdown = document.getElementById('auth-dropdown');
+	dropdown.hidden = !dropdown.hidden;
+	widget.classList.toggle('open', !dropdown.hidden);
+}
+
+function authClose() {
+	const widget = document.getElementById('panel-auth');
+	const dropdown = document.getElementById('auth-dropdown');
+	if (dropdown) dropdown.hidden = true;
+	if (widget) widget.classList.remove('open');
+}
+
 function authTab(tab) {
-	if (!document.getElementById('auth-modal')) return;
+	if (!document.getElementById('panel-auth')) return;
 
 	authActiveTab = tab;
 	document.getElementById('tab-login').classList.toggle('active', tab === 'login');
@@ -56,8 +70,8 @@ function authSubmit() {
 }
 
 function initAuth() {
-	const authModal = document.getElementById('auth-modal');
-	if (!authModal) return;
+	const widget = document.getElementById('panel-auth');
+	if (!widget) return;
 
 	const loginForm = document.getElementById('login-form');
 	const registerForm = document.getElementById('register-form');
@@ -70,6 +84,13 @@ function initAuth() {
 	registerForm.addEventListener('submit', function(e) {
 		e.preventDefault();
 		authRegister();
+	});
+
+	// Close dropdown when clicking outside the widget
+	document.addEventListener('click', function(e) {
+		if (!widget.contains(e.target)) {
+			authClose();
+		}
 	});
 
 	authTab('login');
@@ -92,6 +113,7 @@ function authLogin() {
 		document.getElementById('user-name').textContent = res.username;
 		document.body.classList.add('authenticated');
 		form.reset();
+		authClose();
 	}).fail(function(xhr) {
 		document.getElementById('login-error').textContent = authErrorMessage(xhr, 'Login failed');
 	});
@@ -115,6 +137,7 @@ function authRegister() {
 		document.body.classList.add('authenticated');
 		form.reset();
 		authTab('login');
+		authClose();
 	}).fail(function(xhr) {
 		document.getElementById('register-error').textContent = authErrorMessage(xhr, 'Registration failed');
 	});
@@ -130,5 +153,6 @@ function authLogout() {
 		document.getElementById('login-form').reset();
 		document.getElementById('register-form').reset();
 		authTab('login');
+		authClose();
 	}).fail(ajaxFailure);
 }

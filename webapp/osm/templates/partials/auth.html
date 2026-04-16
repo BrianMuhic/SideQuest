@@ -1,15 +1,20 @@
-<div id="auth-modal" class="modal top-right">
-    <div class="guest-show">
-        <div class="modal_header">
-            <button id="tab-login" class="modal_tab active" type="button" onclick="authTab('login')">
-                Sign In
-            </button>
-            <button id="tab-register" class="modal_tab" type="button" onclick="authTab('register')">
-                Sign Up
-            </button>
-        </div>
+<div id="panel-auth" class="auth-widget">
+    <button class="auth-toggle" onclick="authToggle()">
+        <i class="fa-regular fa-circle-user guest-show"></i>
+        <i class="fa-solid fa-circle-user auth-show"></i>
+    </button>
 
-        <div class="modal_body">
+    <div id="auth-dropdown" class="auth-dropdown" hidden>
+        <div class="guest-show">
+            <div class="header">
+                <button id="tab-login" class="auth-tab active" type="button" onclick="authTab('login')">
+                    Sign In
+                </button>
+                <button id="tab-register" class="auth-tab" type="button" onclick="authTab('register')">
+                    Sign Up
+                </button>
+            </div>
+
             <form id="login-form">
                 <div class="field">
                     <input type="text" name="username" placeholder="Username" autocomplete="username" required>
@@ -28,33 +33,25 @@
                     <input type="password" name="password" placeholder="Password" autocomplete="new-password" required>
                 </div>
                 <div class="field">
-                    <input
-                        type="password"
-                        name="verify_password"
-                        placeholder="Repeat password"
-                        autocomplete="new-password"
-                        required
-                    >
+                    <input type="password" name="verify_password" placeholder="Repeat password" autocomplete="new-password" required>
                 </div>
                 <p id="register-error" class="form-error"></p>
             </form>
+
+            <div class="footer">
+                <button id="auth-btn" class="primary-button" type="button" onclick="authSubmit()">
+                    Sign in
+                </button>
+            </div>
         </div>
 
-        <div class="modal_footer">
-            <button id="auth-btn" class="primary-button" type="button" onclick="authSubmit()">
-                Sign in
-            </button>
-        </div>
-    </div>
-
-    <div class="auth-show">
-        <div class="modal_body">
-            <p>
+        <div class="auth-show">
+            <p class="auth-username">
                 Signed in as <strong id="user-name">{% if current_user.is_authenticated %}{{ current_user.username }}{% endif %}</strong>
             </p>
-        </div>
-        <div class="modal_footer">
-            <button class="secondary-button" type="button" onclick="authLogout()">Log Out</button>
+            <div class="footer">
+                <button class="secondary-button" type="button" onclick="authLogout()">Log Out</button>
+            </div>
         </div>
     </div>
 </div>

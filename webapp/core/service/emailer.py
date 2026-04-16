@@ -62,7 +62,7 @@ def send_email(
 
     email = _create_email(
         db=db,
-        sender=(_clean_emails(sender) or _clean_emails(config.MAIL_SENDER))[0],
+        sender=(_clean_emails(sender) or _clean_emails(config.MAIL_SENDER))[0],  # type: ignore
         recipients=_clean_emails(to),
         cc=_clean_emails(cc),
         bcc=_clean_emails(bcc),
@@ -118,7 +118,7 @@ def _send_emails(db: Session, emails: Sequence[Email] | Email) -> None:
         return
 
     try:
-        with _establish_mail_connection() as conn:
+        with _establish_mail_connection() as conn:  # type: ignore
             for email in emails:
                 _send_email(db, conn, email)
         log.i(f"Sent email(s) {log_ids}")

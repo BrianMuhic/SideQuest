@@ -12,43 +12,43 @@ dependencies = [
     "flask-assets",             # Bundling assets for browsers
     "flask-login",              # User authentication and sessions
     "flask-mail",               # Email sending functionality
-    "flask-moment",             # Date/time formatting with Moment.js
     "flask-wtf",                # Forms and CSRF protection
-    "libsass",                  # Sass/SCSS stylesheet compilation
-    "cssmin",                   # CSS minification
-    "rjsmin",                   # JavaScript minification
     "python-dateutil",          # Date/time parsing and manipulation utilities
     "python-dotenv",            # Load environment variables from .env files
     "requests",                 # HTTP client library for external API calls
+    "cssmin",                   # CSS minification
+    "libsass",                  # Sass/SCSS stylesheet compilation
+    "rjsmin",                   # JavaScript minification
 
     # Database
-    "alembic",                  # Database schema migrations for SQLAlchemy
     "pymysql",                  # Synchronous MySQL database driver
-    "redis",                    # In-memory database for caching and sessions
-    "sqlalchemy-utils",         # Extra SQLAlchemy utilities and data types
     "sqlalchemy",               # The Python SQL Toolkit and Object Relational Mapper
+    "sqlalchemy-utils",         # Extra SQLAlchemy utilities and data types
 
     # Validation
     "email_validator",          # Validate email addresses
     "password-strength",        # Password strength and validation
     "pydantic",                 # Data validation using Python type hints
     "pydantic-settings",        # Settings management using Pydantic
+
+    # Deployment
+    "alembic",                  # Database schema migrations for SQLAlchemy
+    "gunicorn",                 # WSGI HTTP server
 ]
 
 [dependency-groups]
 dev = [
-    "ty",                       # Type checking (astral's version of mypy)
-    "pre-commit",               # Git pre-commit formatting (see .pre-commit-config.yaml)
-    "ruff",                     # Formatting and linting
     "complexipy",               # Code complexity analyzer and cyclomatic complexity checker
     "coverage",                 # Code coverage measurement and reporting
+    "pre-commit",               # Git pre-commit formatting (see .pre-commit-config.yaml)
+    "pyrefly",                  # Type checking (meta's version of mypy)
+    "ruff",                     # Formatting and linting
 
     # PyTest
     "py",                       # Common pytest utilities and helpers
     "pyquery",                  # jQuery-like HTML parsing and manipulation - replaces ugly beautiful soup
     "pytest",                   # Testing framework
     "pytest-clarity",           # Enhanced test failure output and diffs
-    "pytest-html",              # Generate HTML test reports
     "pytest-sugar",             # Prettier test output with progress bars
     "pytest-xdist",             # Parallel test execution (-n <CPUs>)
 
@@ -58,14 +58,15 @@ dev = [
     "types-python-dateutil", 
     "types-requests", 
     "types-sqlalchemy-utils", 
+    "types-wtforms",
 ]
 
 
 ## ==================== ALEMBIC ==================== ##
 [tool.alembic]
-file_template = "%%(year)d%%(month).2d%%(day).2d%%(hour).2d_%%(slug)s"
-prepend_sys_path= [".", "webapp"]
 script_location = "webapp/migrations"
+prepend_sys_path= ["webapp"]
+file_template = "%%(year)d%%(month).2d%%(day).2d%%(hour).2d_%%(slug)s"
 revision_environment = false
 
 
@@ -113,40 +114,37 @@ mypy-init-return = true
 suppress-none-returning = true
 
 
-## ==================== TY (type checking) ==================== ##
-# https://docs.astral.sh/ty/reference/configuration
-[tool.ty.environment]
-root = [".", "webapp"]
+## ==================== PYREFLY (type checking ==================== ##
+# https://pyrefly.org/en/docs/configuration
+[tool.pyrefly]
+search-path = [".", "webapp"]
+permissive-ignores = true
+output-format = "min-text"
 
-[tool.ty.terminal]
-output-format = "concise"
-
-[tool.ty.src]
-exclude = []
-
-# https://docs.astral.sh/ty/reference/rules
-[tool.ty.rules]
-
-
-## ==================== COVERAGE ==================== ##
-[tool.coverage.run]
-source = ["."]
-omit = ["*/migrations/*", "*/tests/*"]
-
-
-## ==================== PYTEST ==================== ##
-[tool.pytest.ini_options]
-filterwarnings = ["ignore"]
-pythonpath = [".", "webapp", "tests"]
-testpaths = ["tests"]
-addopts = ["--numprocesses=auto"]
+# https://pyrefly.org/en/docs/error-kinds
+[tool.pyrefly.errors]
+bad-assignment = false
 
 
 ## ==================== COMPLEXIPY ==================== ##
 # https://rohaquinlop.github.io/complexipy/#configuration
 [tool.complexipy]
-paths = ["."]
-max-complexity-allowed = 15
-sort = "desc"
+paths = [".", "webapp", "tests"]
 failed = true
+sort = "desc"
 
+
+## ==================== PYTEST ==================== ##
+# https://docs.pytest.org/en/stable/reference/customize.html
+[tool.pytest.ini_options]
+filterwarnings = ["ignore"]
+pythonpath = [".", "webapp", "tests"]
+testpaths = ["tests"]
+addopts = ["--numprocesses=1"] # set to 'auto' once the test suite grows
+
+
+## ==================== COVERAGE ==================== ##
+# https://coverage.readthedocs.io/en/latest/config.html
+[tool.coverage.run]
+source = ["webapp"]
+omit = ["*/migrations/*"]

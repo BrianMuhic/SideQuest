@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------------------------------------------------------
-// Route Detail Page — itinerary panel, leg connectors, numbered markers, reorder controls
+// Route Detail Page - itinerary panel, leg connectors, numbered markers, reorder controls
 // -------------------------------------------------------------------------------------------------------------------
 
 .panel.route-detail { width: 420px; }
@@ -145,7 +145,7 @@
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
-// Responsive — bottom sheet on mobile
+// Responsive - bottom sheet on mobile
 
 @media (max-width: $bp-mobile) {
 	.panel.route-detail { width: 100%; }
