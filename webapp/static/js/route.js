@@ -45,3 +45,24 @@ function fetchRoutePreview(start, end) {
         cache: false
     });
 }
+
+/**
+ * Save a route for the currently logged-in user.
+ * @param {Object} payload
+ * @returns {jqXHR}
+ */
+function saveRoute(payload) {
+    return postJson('/api/saved-routes', payload);
+}
+
+/**
+ * Fetch saved routes for the currently logged-in user.
+ * @returns {jqXHR}
+ */
+function fetchSavedRoutes() {
+    return $.get({
+        url: '/api/saved-routes',
+        data: { _: Date.now() },
+        cache: false
+    });
+}

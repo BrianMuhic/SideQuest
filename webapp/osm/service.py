@@ -1,10 +1,13 @@
 import re
 from math import atan2, cos, radians, sin, sqrt
+from typing import Any
 
 import requests
+from sqlalchemy.orm import Session
 
 from config import config
 from core.service.logger import get_logger
+from osm.models import SavedRoute
 
 log = get_logger()
 
@@ -418,3 +421,96 @@ def get_route_preview(start: str, end: str) -> dict:
         "distance_miles": distance_miles,
         "duration_minutes": duration_minutes,
     }
+
+
+def _normalize_point(point: dict[str, Any], label: str) -> tuple[str, float, float]:
+    name = str(point.get("name", "")).strip()
+    if not name:
+        raise ValueError(f"{label} location name is required.")
+
+    try:
+        lat = float(point["lat"])
+        lon = float(point["lon"])
+    except (KeyError, TypeError, ValueError) as err:
+        raise ValueError(f"{label} location coordinates are invalid.") from err
+
+    return name, lat, lon
+
+
+def _normalize_stops(stops: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for stop in stops:
+        if not isinstance(stop, dict):
+            continue
+        try:
+            lat = float(stop["lat"])
+            lon = float(stop["lon"])
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        normalized.append(
+            {
+                "id": str(stop.get("id", "")),
+                "name": str(stop.get("name", "")).strip(),
+                "category": str(stop.get("category", "")).strip(),
+                "lat": lat,
+                "lon": lon,
+            }
+        )
+    return normalized
+
+
+def save_route_for_user(
+    db: Session,
+    user_id: int,
+    route_name: str,
+    start: dict[str, Any],
+    end: dict[str, Any],
+    stops: list[dict[str, Any]],
+    route_geojson: dict[str, Any],
+    total_distance_miles: float,
+    total_duration_minutes: int,
+) -> SavedRoute:
+    start_name, start_lat, start_lon = _normalize_point(start, "Start")
+    end_name, end_lat, end_lon = _normalize_point(end, "Destination")
+
+    if not isinstance(route_geojson, dict):
+        raise ValueError("Route geometry is invalid.")
+
+    name = route_name.strip() or f"{start_name} to {end_name}"
+
+    record = SavedRoute(
+        user_id=user_id,
+        name=name[:256],
+        start_name=start_name[:256],
+        start_lat=start_lat,
+        start_lon=start_lon,
+        end_name=end_name[:256],
+        end_lat=end_lat,
+        end_lon=end_lon,
+        stops=_normalize_stops(stops),
+        route_geojson=route_geojson,
+        total_distance_miles=float(total_distance_miles),
+        total_duration_minutes=max(0, int(total_duration_minutes)),
+    )
+    record.add(db, flush=True)
+    log.i(f"Saved route {record.id} for user {user_id}")
+    return record
+
+
+def list_saved_routes_for_user(db: Session, user_id: int) -> list[dict[str, Any]]:
+    routes = SavedRoute.for_user(db, user_id)
+    return [
+        {
+            "id": route.id,
+            "name": route.name,
+            "start": {"name": route.start_name, "lat": route.start_lat, "lon": route.start_lon},
+            "end": {"name": route.end_name, "lat": route.end_lat, "lon": route.end_lon},
+            "stops": route.stops,
+            "route_geojson": route.route_geojson,
+            "total_distance_miles": route.total_distance_miles,
+            "total_duration_minutes": route.total_duration_minutes,
+            "created_date": route.created_date.isoformat(),
+        }
+        for route in routes
+    ]
