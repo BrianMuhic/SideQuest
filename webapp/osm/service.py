@@ -242,6 +242,7 @@ def _find_stops_along_route(
     route_geometry: dict,
     stop_categories: list[str],
     allowed_detour_minutes: int,
+    quick: bool = False,
 ) -> list[dict]:
     route_coordinates = route_geometry.get("coordinates", [])
     sampled_points = _sample_route_coordinates(route_coordinates)
@@ -256,10 +257,18 @@ def _find_stops_along_route(
     if not tag_filters:
         return []
 
-    max_points = max(4, 16 // max(1, len(tag_filters) // 4))
+    if quick:
+        query_points = sampled_points[:2]
+    else:
+        max_points = max(4, 16 // max(1, len(tag_filters) // 4))
+        if len(sampled_points) > max_points:
+            stride = (len(sampled_points) - 1) / (max_points - 1)
+            query_points = [sampled_points[round(i * stride)] for i in range(max_points)]
+        else:
+            query_points = sampled_points
     clauses = [
         _overpass_clause(key, value, lat, lon, detour_radius_meters)
-        for lon, lat in sampled_points[:max_points]
+        for lon, lat in query_points
         for key, value in tag_filters
     ]
 
@@ -316,6 +325,7 @@ def find_stops(
     end_location: str,
     stop_categories: list[str],
     total_detour_minutes: int,
+    quick: bool = False,
 ) -> tuple[list[dict], dict | None]:
     log.i(f"Find stops: {start_location!r} -> {end_location!r}, categories={stop_categories}")
     start_place = _geocode(start_location)
@@ -336,7 +346,9 @@ def find_stops(
         log.w(f"No route found: {start_location!r} -> {end_location!r}")
         return [], None
 
-    stops = _find_stops_along_route(route["geometry"], stop_categories, total_detour_minutes)
+    stops = _find_stops_along_route(
+        route["geometry"], stop_categories, total_detour_minutes, quick=quick
+    )
     log.i(f"Found {len(stops)} stops: {start_location!r} -> {end_location!r}")
     return stops, route["geometry"]
 
