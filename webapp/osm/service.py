@@ -257,9 +257,14 @@ def _find_stops_along_route(
         return []
 
     max_points = max(4, 16 // max(1, len(tag_filters) // 4))
+    if len(sampled_points) > max_points:
+        stride = (len(sampled_points) - 1) / (max_points - 1)
+        query_points = [sampled_points[round(i * stride)] for i in range(max_points)]
+    else:
+        query_points = sampled_points
     clauses = [
         _overpass_clause(key, value, lat, lon, detour_radius_meters)
-        for lon, lat in sampled_points[:max_points]
+        for lon, lat in query_points
         for key, value in tag_filters
     ]
 
