@@ -32,12 +32,12 @@ _SCENIC_FILTERS: list[tuple[str, str]] = [
 ]
 
 
-def _get_json(url: str, params: dict | None = None) -> dict | list:
+def _get_json(url: str, params: dict | None = None, timeout: int = 120) -> dict | list:
     headers = {
         "User-Agent": config.USER_AGENT,
         "Accept": "application/json",
     }
-    response = requests.get(url, params=params, timeout=120, headers=headers)
+    response = requests.get(url, params=params, timeout=timeout, headers=headers)
     response.raise_for_status()
     return response.json()
 
@@ -133,6 +133,7 @@ def _commons_thumb_from_title(file_title: str) -> str | None:
                 "iiurlwidth": 900,
                 "origin": "*",
             },
+            timeout=5,
         )
         pages = data.get("query", {}).get("pages", {})  # type: ignore[unresolved-attribute]
         for page in pages.values():
@@ -274,7 +275,7 @@ def _find_stops_along_route(
 
     results_by_key: dict[str, dict] = {}
     for element in result.get("elements", []):
-        processed = _process_overpass_element(element, route_coordinates, stop_categories)
+        processed = _process_overpass_element(element, sampled_points, stop_categories)
         if processed is None or processed[0] in results_by_key:
             continue
         key, stop = processed
