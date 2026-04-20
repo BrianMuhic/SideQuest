@@ -52,8 +52,13 @@ def find_stops() -> ResponseReturnValue:
     detour_minutes = get_json("allowed_detour_minutes", int, 0)
 
     total_detour_minutes = (detour_hours * 60) + detour_minutes
+    stage = get_json("stage", str, "full")
     stops, route_geojson = service.find_stops(
-        start_location, end_location, stop_categories, total_detour_minutes
+        start_location,
+        end_location,
+        stop_categories,
+        total_detour_minutes,
+        quick=(stage == "quick"),
     )
 
     data = {

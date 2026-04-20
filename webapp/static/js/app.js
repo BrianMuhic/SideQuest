@@ -326,7 +326,7 @@ function initApp() {
         $('#find-stops-button').prop('disabled', true);
         $('#find-stops-loading').removeAttr('hidden');
 
-        postJson('/api/find-stops', {
+        const basePayload = {
             start_location:          routeData.start.name,
             end_location:            routeData.end.name,
             duration_text:           formatDuration(routeData.duration_minutes),
@@ -334,19 +334,44 @@ function initApp() {
             allowed_detour_hours:    parseInt($('#detour-hours').val()   || '0', 10),
             allowed_detour_minutes:  parseInt($('#detour-minutes').val() || '0', 10),
             stop_categories:         categories,
-        }).done(function(data) {
-            $('#find-stops-button').prop('disabled', false);
-            $('#find-stops-loading').attr('hidden', true);
-            renderStopsPanel(data);
-            showPanel('stops');
-        }).fail(function(xhr) {
-            $('#find-stops-button').prop('disabled', false);
-            $('#find-stops-loading').attr('hidden', true);
-            if (xhr.statusText !== 'abort') {
-                const d = xhr.responseJSON || {};
-                alert(d.error || 'Unable to find stops. Please try again.');
+        };
+
+        let quickFinished = false;
+        let fullFinished = false;
+
+        function finishIfDone() {
+            if (quickFinished && fullFinished) {
+                $('#find-stops-button').prop('disabled', false);
+                $('#find-stops-loading').attr('hidden', true);
             }
-        });
+        }
+
+        postJson('/api/find-stops', Object.assign({stage: 'quick'}, basePayload))
+            .done(function(data) {
+                quickFinished = true;
+                renderStopsPanel(data);
+                showPanel('stops');
+                finishIfDone();
+            })
+            .fail(function() {
+                quickFinished = true;
+                finishIfDone();
+            });
+
+        postJson('/api/find-stops', Object.assign({stage: 'full'}, basePayload))
+            .done(function(data) {
+                fullFinished = true;
+                mergeStopsIntoFeed(data);
+                finishIfDone();
+            })
+            .fail(function(xhr) {
+                fullFinished = true;
+                finishIfDone();
+                if (xhr.statusText !== 'abort' && !quickFinished) {
+                    const d = xhr.responseJSON || {};
+                    alert(d.error || 'Unable to find stops. Please try again.');
+                }
+            });
     });
 
     // -----------------------------------------------
@@ -435,6 +460,32 @@ function initApp() {
         });
 
         renderSelectedStops();
+    }
+
+    function mergeStopsIntoFeed(data) {
+        if (!data || !data.stops || !data.stops.length) return;
+
+        const $feed = $('#stops-feed');
+        $feed.find('p.muted-text').remove();
+
+        const existingIds = new Set();
+        $feed.find('[data-stop-id]').each(function() {
+            existingIds.add($(this).attr('data-stop-id'));
+        });
+
+        data.stops.forEach(function(stop) {
+            if (existingIds.has(stop.id)) return;
+            $feed.append(buildStopCard(stop, function(addedStop) {
+                selectedStops.push(addedStop);
+
+                const marker = L.marker([addedStop.lat, addedStop.lon])
+                    .addTo(map)
+                    .bindPopup('<strong>' + addedStop.name + '</strong><br>' + addedStop.category);
+
+                stopMarkers[addedStop.id] = marker;
+                renderSelectedStops();
+            }));
+        });
     }
 
     $('#preview-route-button').on('click', function() {
