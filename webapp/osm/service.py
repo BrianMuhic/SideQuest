@@ -260,7 +260,7 @@ def _find_stops_along_route(
     if quick:
         query_points = sampled_points[:2]
     else:
-        max_points = max(4, 16 // max(1, len(tag_filters) // 4))
+        max_points = max(8, min(20, 32 // max(1, len(tag_filters) // 4)))
         if len(sampled_points) > max_points:
             stride = (len(sampled_points) - 1) / (max_points - 1)
             query_points = [sampled_points[round(i * stride)] for i in range(max_points)]
@@ -272,7 +272,7 @@ def _find_stops_along_route(
         for key, value in tag_filters
     ]
 
-    query = f"[out:json][timeout:60];\n(\n{''.join(clauses)}\n);\nout center tags 100;\n"
+    query = f"[out:json][timeout:60];\n(\n{''.join(clauses)}\n);\nout center tags 500;\n"
 
     try:
         log.d(f"Overpass query: {len(clauses)} clauses, {len(query)} chars")
@@ -290,10 +290,30 @@ def _find_stops_along_route(
         key, stop = processed
         results_by_key[key] = stop
 
-    return sorted(
-        results_by_key.values(),
-        key=lambda item: (item["distance_off_route_miles"], item["name"].lower()),
-    )[:40]
+    # Bucket stops by which third of the route they fall in, then take the
+    # top closest-to-route stops from each segment so the middle of the
+    # route gets representation even when one end is much denser (e.g. DC).
+    def _segment_index(stop: dict) -> int:
+        nearest = min(
+            range(len(sampled_points)),
+            key=lambda i: _haversine_miles(
+                stop["lat"], stop["lon"], sampled_points[i][1], sampled_points[i][0]
+            ),
+        )
+        return min(2, nearest * 3 // max(1, len(sampled_points)))
+
+    stops_by_segment: list[list[dict]] = [[], [], []]
+    for stop in results_by_key.values():
+        stops_by_segment[_segment_index(stop)].append(stop)
+
+    per_segment_quota = 14
+    selected: list[dict] = []
+    for bucket in stops_by_segment:
+        bucket.sort(key=lambda s: (s["distance_off_route_miles"], s["name"].lower()))
+        selected.extend(bucket[:per_segment_quota])
+
+    selected.sort(key=_segment_index)
+    return selected[:40]
 
 
 def _geocode(location: str) -> dict | None:
