@@ -1,5 +1,9 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.0
+  - repo: local
     hooks:
-      - id: ruff-format
+      - id: just-all
+        name: Run all checks (format, lint, typehints, complexity)
+        entry: just all
+        language: system
+        pass_filenames: false
+        types: [python]

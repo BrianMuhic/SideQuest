@@ -4,6 +4,8 @@
 *.tar*
 .env*
 local/
+virginia-latest*
+virginia-latest.os*
 
 # Generated
 *.log

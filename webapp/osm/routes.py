@@ -4,10 +4,14 @@ from typing import Any
 
 from flask import render_template
 from flask.typing import ResponseReturnValue
+from sqlalchemy.orm import Session
 from werkzeug import Response
 from werkzeug.exceptions import BadRequest, NotFound
 
+from account import service as account_service
+from account.service import login_required
 from core.app.blueprint import BaseBlueprint
+from core.db.engine import use_db
 from core.util.request_params import get_json, get_param, require_json
 from osm import service
 
@@ -48,19 +52,19 @@ def find_stops() -> ResponseReturnValue:
     detour_minutes = get_json("allowed_detour_minutes", int, 0)
 
     total_detour_minutes = (detour_hours * 60) + detour_minutes
-    allowed_detour_text = service.friendly_detour_text(detour_hours, detour_minutes)
-
-    try:
-        stops, route_geojson = service.find_stops(
-            start_location, end_location, stop_categories, total_detour_minutes
-        )
-    except Exception:
-        stops, route_geojson = [], None
+    stage = get_json("stage", str, "full")
+    stops, route_geojson = service.find_stops(
+        start_location,
+        end_location,
+        stop_categories,
+        total_detour_minutes,
+        quick=(stage == "quick"),
+    )
 
     data = {
         "stops": stops,
         "route_geojson": route_geojson,
-        "allowed_detour_text": allowed_detour_text,
+        "allowed_detour_text": service.friendly_detour_text(detour_hours, detour_minutes),
     }
     return _api_response(data)
 
@@ -87,12 +91,7 @@ def location_suggestions() -> ResponseReturnValue:
     if len(query) < 3:
         return _api_response([], cache=False)
 
-    try:
-        suggestions = service.get_location_suggestions(query)
-    except Exception:
-        suggestions = []
-
-    return _api_response(suggestions, cache=False)
+    return _api_response(service.get_location_suggestions(query), cache=False)
 
 
 @bp.get("/api/route-preview")
@@ -109,3 +108,50 @@ def route_preview() -> ResponseReturnValue:
         raise NotFound(str(e))
 
     return _api_response(preview)
+
+
+@bp.post("/api/saved-routes")
+@login_required
+@use_db
+def save_route(db: Session) -> ResponseReturnValue:
+    user = account_service.require_user()
+    route_name = get_json("route_name", str, "")
+    start = require_json("start", dict)
+    end = require_json("end", dict)
+    stops = get_json("stops", list, [])
+    route_geojson = require_json("route_geojson", dict)
+    total_distance_miles = get_json("total_distance_miles", float, 0.0)
+    total_duration_minutes = get_json("total_duration_minutes", int, 0)
+
+    try:
+        record = service.save_route_for_user(
+            db=db,
+            user_id=user.id,
+            route_name=route_name,
+            start=start,
+            end=end,
+            stops=stops,
+            route_geojson=route_geojson,
+            total_distance_miles=total_distance_miles,
+            total_duration_minutes=total_duration_minutes,
+        )
+    except ValueError as err:
+        raise BadRequest(str(err))
+
+    return _api_response(
+        {
+            "id": record.id,
+            "name": record.name,
+            "message": "Route saved.",
+        },
+        cache=False,
+    )
+
+
+@bp.get("/api/saved-routes")
+@login_required
+@use_db
+def list_saved_routes(db: Session) -> ResponseReturnValue:
+    user = account_service.require_user()
+    saved_routes = service.list_saved_routes_for_user(db, user.id)
+    return _api_response(saved_routes, cache=False)

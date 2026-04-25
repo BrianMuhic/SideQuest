@@ -165,6 +165,10 @@
 	li:last-child { margin-bottom: 0; }
 }
 
+.route-secondary-actions {
+	margin-top: 0.75rem;
+}
+
 // -------------------------------------------------------------------------------------------------------------------
 // Preferences panel - trip summary
 // -------------------------------------------------------------------------------------------------------------------
@@ -366,6 +370,60 @@
 .muted-text {
 	color: $text-muted;
 	font-size: 0.9rem;
+}
+
+.auth-only {
+	display: none;
+}
+
+body.authenticated .auth-only {
+	display: inline-flex;
+}
+
+.saved-route-card {
+	background: #ffffff;
+	border: 1px solid $gray-light;
+	border-radius: 12px;
+	padding: 0.85rem;
+	margin-bottom: 0.75rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.45rem;
+}
+
+.saved-route-title {
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: $text-darkest;
+}
+
+.saved-route-meta {
+	font-size: 0.86rem;
+	color: $text-body;
+}
+
+.saved-route-stops-preview {
+	background: #f9fafb;
+	border: 1px solid $gray-light;
+	border-radius: 10px;
+	padding: 0.6rem 0.7rem;
+}
+
+.saved-route-stops-title {
+	font-size: 0.8rem;
+	font-weight: 700;
+	color: $text-muted;
+	margin-bottom: 0.35rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.saved-route-stop-item {
+	font-size: 0.85rem;
+	color: $text-body;
+	margin-bottom: 0.2rem;
+
+	&:last-child { margin-bottom: 0; }
 }
 
 // -------------------------------------------------------------------------------------------------------------------

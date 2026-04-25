@@ -26,13 +26,11 @@ def app() -> Yield[Flask]:
     yield create_app()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def client(app: Flask) -> Yield[FlaskClient]:
-    """TODO: DOCSTRING"""
-    # Flask provides a way to test application by exposing the Werkzeug test Client
-    # and handling the context locals for you.
+    """Fresh Flask test client per test - avoids session/cookie leakage between tests."""
     with app.test_client() as client:
-        yield client  # this is where the testing happens
+        yield client
 
 
 def _initialize_database() -> None:

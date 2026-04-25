@@ -1,22 +1,43 @@
+import re
 from math import atan2, cos, radians, sin, sqrt
+from typing import Any
 
 import requests
+from sqlalchemy.orm import Session
 
 from config import config
 from core.service.logger import get_logger
+from osm.models import SavedRoute
 
 log = get_logger()
 
 
-# ============================== HTTP Helpers ============================== #
+# Overpass tag filters by category. A leading "~" on a value marks it as a regex.
+_CATEGORY_TAG_FILTERS: dict[str, list[tuple[str, str]]] = {
+    "gas": [("amenity", "fuel")],
+    "food": [("amenity", "restaurant"), ("amenity", "fast_food"), ("amenity", "cafe")],
+    "coffee": [("amenity", "cafe"), ("shop", "coffee")],
+    "restroom": [("amenity", "toilets")],
+    "hotel": [("tourism", "hotel"), ("tourism", "motel"), ("tourism", "guest_house")],
+    "attractions": [("tourism", "museum"), ("tourism", "attraction"), ("tourism", "artwork")],
+}
+
+_SCENIC_FILTERS: list[tuple[str, str]] = [
+    ("tourism", "viewpoint"),
+    ("boundary", "national_park"),
+    ("leisure", "nature_reserve"),
+    ("protect_class", "~^(2|3|5)$"),
+    ("natural", "peak"),
+    ("highway", "trailhead"),
+]
 
 
-def _get_json(url: str, params: dict | None = None) -> dict | list:
+def _get_json(url: str, params: dict | None = None, timeout: int = 120) -> dict | list:
     headers = {
         "User-Agent": config.USER_AGENT,
         "Accept": "application/json",
     }
-    response = requests.get(url, params=params, timeout=120, headers=headers)
+    response = requests.get(url, params=params, timeout=timeout, headers=headers)
     response.raise_for_status()
     return response.json()
 
@@ -32,9 +53,6 @@ def _post_overpass(query: str) -> dict:
     return response.json()
 
 
-# ============================== Geo Utilities ============================== #
-
-
 def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     earth_radius_miles = 3958.8
     dlat = radians(lat2 - lat1)
@@ -45,16 +63,13 @@ def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> floa
 
 
 def _nearest_route_distance_miles(
-    stop_lat: float,
-    stop_lon: float,
-    route_coordinates: list[list[float]],
+    stop_lat: float, stop_lon: float, route_coordinates: list[list[float]]
 ) -> float:
-    closest = None
-    for lon, lat in route_coordinates:
-        distance = _haversine_miles(stop_lat, stop_lon, lat, lon)
-        if closest is None or distance < closest:
-            closest = distance
-    return round(closest or 0.0, 2)
+    if not route_coordinates:
+        return 0.0
+    return round(
+        min(_haversine_miles(stop_lat, stop_lon, lat, lon) for lon, lat in route_coordinates), 2
+    )
 
 
 def _sample_route_coordinates(
@@ -66,9 +81,6 @@ def _sample_route_coordinates(
     if route_coordinates[-1] not in sampled:
         sampled.append(route_coordinates[-1])
     return sampled
-
-
-# ============================== OSM Data Helpers ============================== #
 
 
 def _extract_center(element: dict) -> tuple[float | None, float | None]:
@@ -121,6 +133,7 @@ def _commons_thumb_from_title(file_title: str) -> str | None:
                 "iiurlwidth": 900,
                 "origin": "*",
             },
+            timeout=5,
         )
         pages = data.get("query", {}).get("pages", {})  # type: ignore[unresolved-attribute]
         for page in pages.values():
@@ -139,86 +152,97 @@ def _photo_url_from_tags(tags: dict) -> str | None:
     return None
 
 
-def _build_general_filters(stop_categories: list[str]) -> list[str]:
-    filters = []
-
-    if "gas" in stop_categories:
-        filters.append('nwr(around:RADIUS,LAT,LON)["amenity"="fuel"];')
-
-    if "food" in stop_categories:
-        filters.extend(
-            [
-                'nwr(around:RADIUS,LAT,LON)["amenity"="restaurant"];',
-                'nwr(around:RADIUS,LAT,LON)["amenity"="fast_food"];',
-                'nwr(around:RADIUS,LAT,LON)["amenity"="cafe"];',
-            ]
-        )
-
-    if "coffee" in stop_categories:
-        filters.extend(
-            [
-                'nwr(around:RADIUS,LAT,LON)["amenity"="cafe"];',
-                'nwr(around:RADIUS,LAT,LON)["shop"="coffee"];',
-            ]
-        )
-
-    if "restroom" in stop_categories:
-        filters.append('nwr(around:RADIUS,LAT,LON)["amenity"="toilets"];')
-
-    if "hotel" in stop_categories:
-        filters.extend(
-            [
-                'nwr(around:RADIUS,LAT,LON)["tourism"="hotel"];',
-                'nwr(around:RADIUS,LAT,LON)["tourism"="motel"];',
-                'nwr(around:RADIUS,LAT,LON)["tourism"="guest_house"];',
-            ]
-        )
-
-    if "attractions" in stop_categories:
-        filters.extend(
-            [
-                'nwr(around:RADIUS,LAT,LON)["tourism"="museum"];',
-                'nwr(around:RADIUS,LAT,LON)["tourism"="attraction"];',
-                'nwr(around:RADIUS,LAT,LON)["tourism"="artwork"];',
-            ]
-        )
-
-    return filters
+def _overpass_clause(key: str, value: str, lat: float, lon: float, radius: int) -> str:
+    if value.startswith("~"):
+        return f'nwr(around:{radius},{lat},{lon})["{key}"~"{value[1:]}"];'
+    return f'nwr(around:{radius},{lat},{lon})["{key}"="{value}"];'
 
 
-def _build_scenic_filters() -> list[str]:
-    return [
-        'nwr(around:RADIUS,LAT,LON)["tourism"="viewpoint"];',
-        'nwr(around:RADIUS,LAT,LON)["boundary"="national_park"];',
-        'nwr(around:RADIUS,LAT,LON)["leisure"="nature_reserve"];',
-        'nwr(around:RADIUS,LAT,LON)["protect_class"~"^(2|3|5)$"];',
-        'nwr(around:RADIUS,LAT,LON)["natural"="peak"];',
-        'nwr(around:RADIUS,LAT,LON)["highway"="trailhead"];',
-    ]
+def _tag_matches(tags: dict, key: str, value: str) -> bool:
+    actual = tags.get(key)
+    if actual is None:
+        return False
+    if value.startswith("~"):
+        return bool(re.match(value[1:], actual))
+    return actual == value
 
 
 def _is_small_local_park(tags: dict) -> bool:
-    if tags.get("tourism") == "viewpoint":
-        return False
-    if tags.get("boundary") == "national_park":
-        return False
-    if tags.get("protect_class") in {"2", "3", "5"}:
-        return False
-    if tags.get("leisure") == "nature_reserve":
-        return False
-    if tags.get("natural") == "peak":
-        return False
-    if tags.get("highway") == "trailhead":
-        return False
-    if tags.get("leisure") == "park":
-        return True
-    return False
+    return tags.get("leisure") == "park" and not any(
+        _tag_matches(tags, k, v) for k, v in _SCENIC_FILTERS
+    )
+
+
+def _build_tag_filters(stop_categories: list[str]) -> list[tuple[str, str]]:
+    """Builds the list of Overpass tag filters from stop category names."""
+    tag_filters: list[tuple[str, str]] = []
+    for category in stop_categories:
+        if category in _CATEGORY_TAG_FILTERS:
+            tag_filters.extend(_CATEGORY_TAG_FILTERS[category])
+        elif category == "parks":
+            tag_filters.extend(_SCENIC_FILTERS)
+    return tag_filters
+
+
+def _build_address(tags: dict) -> str:
+    """Assembles a human-readable address string from OSM tags."""
+    address_parts = []
+    if tags.get("addr:housenumber") and tags.get("addr:street"):
+        address_parts.append(f"{tags['addr:housenumber']} {tags['addr:street']}")
+    elif tags.get("addr:street"):
+        address_parts.append(tags["addr:street"])
+    if tags.get("addr:city"):
+        address_parts.append(tags["addr:city"])
+    return ", ".join(address_parts) if address_parts else "Address not available"
+
+
+def _process_overpass_element(
+    element: dict, route_coordinates: list[list[float]], stop_categories: list[str]
+) -> tuple[str, dict] | None:
+    """Validates and converts a single Overpass element into a stop entry, returning None if it should be skipped."""
+    tags = element.get("tags", {})
+    name = tags.get("name")
+    if not name:
+        return None
+
+    if "parks" in stop_categories and _is_small_local_park(tags):
+        return None
+
+    stop_lat, stop_lon = _extract_center(element)
+    if stop_lat is None or stop_lon is None:
+        return None
+
+    key = f"{name}-{round(stop_lat, 5)}-{round(stop_lon, 5)}"
+
+    stop = {
+        "id": key,
+        "name": name,
+        "category": _category_label(tags),
+        "lat": stop_lat,
+        "lon": stop_lon,
+        "distance_off_route_miles": _nearest_route_distance_miles(
+            stop_lat, stop_lon, route_coordinates
+        ),
+        "description": (
+            tags.get("description")
+            or tags.get("tourism")
+            or tags.get("amenity")
+            or tags.get("leisure")
+            or tags.get("boundary")
+            or "Interesting stop near your route"
+        ),
+        "address": _build_address(tags),
+        "photo_url": _photo_url_from_tags(tags),
+    }
+
+    return key, stop
 
 
 def _find_stops_along_route(
     route_geometry: dict,
     stop_categories: list[str],
     allowed_detour_minutes: int,
+    quick: bool = False,
 ) -> list[dict]:
     route_coordinates = route_geometry.get("coordinates", [])
     sampled_points = _sample_route_coordinates(route_coordinates)
@@ -228,90 +252,68 @@ def _find_stops_along_route(
 
     detour_radius_meters = max(1600, min(32000, allowed_detour_minutes * 800))
 
-    general_filters = _build_general_filters(stop_categories)
-    scenic_filters = _build_scenic_filters() if "parks" in stop_categories else []
-    all_filters = general_filters + scenic_filters
+    tag_filters = _build_tag_filters(stop_categories)
 
-    if not all_filters:
+    if not tag_filters:
         return []
 
-    all_filled_filters = []
-    max_points = max(4, 16 // max(1, len(all_filters) // 4))
-    for lon, lat in sampled_points[:max_points]:
-        for filter in all_filters:
-            all_filled_filters.append(
-                filter.replace("RADIUS", str(detour_radius_meters))
-                .replace("LAT", str(lat))
-                .replace("LON", str(lon))
-            )
+    if quick:
+        query_points = sampled_points[:2]
+    else:
+        max_points = max(8, min(20, 32 // max(1, len(tag_filters) // 4)))
+        if len(sampled_points) > max_points:
+            stride = (len(sampled_points) - 1) / (max_points - 1)
+            query_points = [sampled_points[round(i * stride)] for i in range(max_points)]
+        else:
+            query_points = sampled_points
+    clauses = [
+        _overpass_clause(key, value, lat, lon, detour_radius_meters)
+        for lon, lat in query_points
+        for key, value in tag_filters
+    ]
 
-    if not all_filled_filters:
-        return []
-
-    query = f"[out:json][timeout:60];\n(\n{''.join(all_filled_filters)}\n);\nout center tags 100;\n"
+    query = f"[out:json][timeout:60];\n(\n{''.join(clauses)}\n);\nout center tags 500;\n"
 
     try:
-        log.d(f"Overpass query: {len(all_filled_filters)} filters, {len(query)} chars")
+        log.d(f"Overpass query: {len(clauses)} clauses, {len(query)} chars")
         result = _post_overpass(query)
-        all_elements = result.get("elements", [])
-        log.d(f"Overpass returned {len(all_elements)} elements")
+        log.d(f"Overpass returned {len(result.get('elements', []))} elements")
     except Exception as e:
         log.w(f"Overpass query failed: {e}")
-        all_elements = []
-
-    all_elements = result.get("elements", [])
+        result = {"elements": []}
 
     results_by_key: dict[str, dict] = {}
-    for element in all_elements:
-        tags = element.get("tags", {})
-        name = tags.get("name")
-        if not name:
+    for element in result.get("elements", []):
+        processed = _process_overpass_element(element, sampled_points, stop_categories)
+        if processed is None or processed[0] in results_by_key:
             continue
+        key, stop = processed
+        results_by_key[key] = stop
 
-        if "parks" in stop_categories and _is_small_local_park(tags):
-            continue
-
-        stop_lat, stop_lon = _extract_center(element)
-        if stop_lat is None or stop_lon is None:
-            continue
-
-        key = f"{name}-{round(stop_lat, 5)}-{round(stop_lon, 5)}"
-        if key in results_by_key:
-            continue
-
-        address_parts = []
-        if tags.get("addr:housenumber") and tags.get("addr:street"):
-            address_parts.append(f"{tags['addr:housenumber']} {tags['addr:street']}")
-        elif tags.get("addr:street"):
-            address_parts.append(tags["addr:street"])
-        if tags.get("addr:city"):
-            address_parts.append(tags["addr:city"])
-
-        results_by_key[key] = {
-            "id": key,
-            "name": name,
-            "category": _category_label(tags),
-            "lat": stop_lat,
-            "lon": stop_lon,
-            "distance_off_route_miles": _nearest_route_distance_miles(
-                stop_lat, stop_lon, route_coordinates
+    # Bucket stops by which third of the route they fall in, then take the
+    # top closest-to-route stops from each segment so the middle of the
+    # route gets representation even when one end is much denser (e.g. DC).
+    def _segment_index(stop: dict) -> int:
+        nearest = min(
+            range(len(sampled_points)),
+            key=lambda i: _haversine_miles(
+                stop["lat"], stop["lon"], sampled_points[i][1], sampled_points[i][0]
             ),
-            "description": (
-                tags.get("description")
-                or tags.get("tourism")
-                or tags.get("amenity")
-                or tags.get("leisure")
-                or tags.get("boundary")
-                or "Interesting stop near your route"
-            ),
-            "address": ", ".join(address_parts) if address_parts else "Address not available",
-            "photo_url": _photo_url_from_tags(tags),
-        }
+        )
+        return min(2, nearest * 3 // max(1, len(sampled_points)))
 
-    return sorted(
-        results_by_key.values(),
-        key=lambda item: (item["distance_off_route_miles"], item["name"].lower()),
-    )[:40]
+    stops_by_segment: list[list[dict]] = [[], [], []]
+    for stop in results_by_key.values():
+        stops_by_segment[_segment_index(stop)].append(stop)
+
+    per_segment_quota = 14
+    selected: list[dict] = []
+    for bucket in stops_by_segment:
+        bucket.sort(key=lambda s: (s["distance_off_route_miles"], s["name"].lower()))
+        selected.extend(bucket[:per_segment_quota])
+
+    selected.sort(key=_segment_index)
+    return selected[:40]
 
 
 def _geocode(location: str) -> dict | None:
@@ -330,9 +332,6 @@ def _get_route(start_lon: float, start_lat: float, end_lon: float, end_lat: floa
     return routes[0] if routes else None
 
 
-# ============================== Public Service Functions ============================== #
-
-
 def friendly_detour_text(hours_value: int, minutes_value: int) -> str:
     if hours_value > 0 and minutes_value > 0:
         return f"{hours_value} hr {minutes_value} min"
@@ -346,6 +345,7 @@ def find_stops(
     end_location: str,
     stop_categories: list[str],
     total_detour_minutes: int,
+    quick: bool = False,
 ) -> tuple[list[dict], dict | None]:
     log.i(f"Find stops: {start_location!r} -> {end_location!r}, categories={stop_categories}")
     start_place = _geocode(start_location)
@@ -366,7 +366,9 @@ def find_stops(
         log.w(f"No route found: {start_location!r} -> {end_location!r}")
         return [], None
 
-    stops = _find_stops_along_route(route["geometry"], stop_categories, total_detour_minutes)
+    stops = _find_stops_along_route(
+        route["geometry"], stop_categories, total_detour_minutes, quick=quick
+    )
     log.i(f"Found {len(stops)} stops: {start_location!r} -> {end_location!r}")
     return stops, route["geometry"]
 
@@ -452,3 +454,96 @@ def get_route_preview(start: str, end: str) -> dict:
         "distance_miles": distance_miles,
         "duration_minutes": duration_minutes,
     }
+
+
+def _normalize_point(point: dict[str, Any], label: str) -> tuple[str, float, float]:
+    name = str(point.get("name", "")).strip()
+    if not name:
+        raise ValueError(f"{label} location name is required.")
+
+    try:
+        lat = float(point["lat"])
+        lon = float(point["lon"])
+    except (KeyError, TypeError, ValueError) as err:
+        raise ValueError(f"{label} location coordinates are invalid.") from err
+
+    return name, lat, lon
+
+
+def _normalize_stops(stops: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for stop in stops:
+        if not isinstance(stop, dict):
+            continue
+        try:
+            lat = float(stop["lat"])
+            lon = float(stop["lon"])
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        normalized.append(
+            {
+                "id": str(stop.get("id", "")),
+                "name": str(stop.get("name", "")).strip(),
+                "category": str(stop.get("category", "")).strip(),
+                "lat": lat,
+                "lon": lon,
+            }
+        )
+    return normalized
+
+
+def save_route_for_user(
+    db: Session,
+    user_id: int,
+    route_name: str,
+    start: dict[str, Any],
+    end: dict[str, Any],
+    stops: list[dict[str, Any]],
+    route_geojson: dict[str, Any],
+    total_distance_miles: float,
+    total_duration_minutes: int,
+) -> SavedRoute:
+    start_name, start_lat, start_lon = _normalize_point(start, "Start")
+    end_name, end_lat, end_lon = _normalize_point(end, "Destination")
+
+    if not isinstance(route_geojson, dict):
+        raise ValueError("Route geometry is invalid.")
+
+    name = route_name.strip() or f"{start_name} to {end_name}"
+
+    record = SavedRoute(
+        user_id=user_id,
+        name=name[:256],
+        start_name=start_name[:256],
+        start_lat=start_lat,
+        start_lon=start_lon,
+        end_name=end_name[:256],
+        end_lat=end_lat,
+        end_lon=end_lon,
+        stops=_normalize_stops(stops),
+        route_geojson=route_geojson,
+        total_distance_miles=float(total_distance_miles),
+        total_duration_minutes=max(0, int(total_duration_minutes)),
+    )
+    record.add(db, flush=True)
+    log.i(f"Saved route {record.id} for user {user_id}")
+    return record
+
+
+def list_saved_routes_for_user(db: Session, user_id: int) -> list[dict[str, Any]]:
+    routes = SavedRoute.for_user(db, user_id)
+    return [
+        {
+            "id": route.id,
+            "name": route.name,
+            "start": {"name": route.start_name, "lat": route.start_lat, "lon": route.start_lon},
+            "end": {"name": route.end_name, "lat": route.end_lat, "lon": route.end_lon},
+            "stops": route.stops,
+            "route_geojson": route.route_geojson,
+            "total_distance_miles": route.total_distance_miles,
+            "total_duration_minutes": route.total_duration_minutes,
+            "created_date": route.created_date.isoformat(),
+        }
+        for route in routes
+    ]

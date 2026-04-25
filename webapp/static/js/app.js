@@ -28,6 +28,11 @@ function initApp() {
     let endMarker     = null;
     let stopMarkers   = {};    // stopId -> L.Marker
     let selectedStops = [];
+    let routeLegData  = null;  // data from /api/route-legs for full trip totals
+
+    function isAuthenticated() {
+        return document.body.classList.contains('authenticated');
+    }
 
     // -----------------------------------------------
     // Panel management
@@ -65,6 +70,7 @@ function initApp() {
     const $endSuggestions   = $('#end-suggestions');
     const $routeSummary     = $('#route-summary');
     const $routeFooter      = $('#route-footer');
+    const $savedRoutesList  = $('#saved-routes-list');
 
     // Autocomplete helpers
 
@@ -148,6 +154,22 @@ function initApp() {
         mapFitBounds(map, routeLayer);
     }
 
+    function removeAllStopMarkers() {
+        $.each(stopMarkers, function(id, marker) { map.removeLayer(marker); });
+        stopMarkers = {};
+    }
+
+    function renderRouteSummary() {
+        if (!routeData) return;
+        $routeSummary.removeClass('loading-hint').show().html(
+            '<ul class="route-summary-list">' +
+            '<li><strong>Estimated Time:</strong> ' + formatDuration(routeData.duration_minutes) + '</li>' +
+            '<li><strong>Distance:</strong> ' + routeData.distance_miles + ' miles</li>' +
+            '</ul>'
+        );
+        $routeFooter.removeAttr('hidden');
+    }
+
     // Route form submit
 
     let activeRouteRequest = null;
@@ -168,6 +190,10 @@ function initApp() {
         $routeFooter.attr('hidden', true);
         $routeSummary.show().addClass('loading-hint').text('Building route preview…');
         routeData = null;
+        routeLegData = null;
+        selectedStops = [];
+        clearDetailMarkers();
+        removeAllStopMarkers();
 
         if (activeRouteRequest) activeRouteRequest.abort();
 
@@ -176,13 +202,7 @@ function initApp() {
                 activeRouteRequest = null;
                 routeData = data;
                 drawRoute(data);
-                $routeSummary.removeClass('loading-hint').show().html(
-                    '<ul class="route-summary-list">' +
-                    '<li><strong>Estimated Time:</strong> ' + formatDuration(data.duration_minutes) + '</li>' +
-                    '<li><strong>Distance:</strong> ' + data.distance_miles + ' miles</li>' +
-                    '</ul>'
-                );
-                $routeFooter.removeAttr('hidden');
+                renderRouteSummary();
             })
             .fail(function(xhr) {
                 activeRouteRequest = null;
@@ -207,6 +227,90 @@ function initApp() {
         showPanel('prefs');
     });
 
+    function buildSavedRouteMapLinks(savedRoute) {
+        var start = savedRoute.start.lat + ',' + savedRoute.start.lon;
+        var stops = Array.isArray(savedRoute.stops) ? savedRoute.stops : [];
+
+        var appleDestinations = stops.map(function(stop) {
+            return stop.lat + ',' + stop.lon;
+        });
+        appleDestinations.push(savedRoute.end.lat + ',' + savedRoute.end.lon);
+        var appleDaddr = appleDestinations.join('+to:');
+
+        var googleDestination = savedRoute.end.lat + ',' + savedRoute.end.lon;
+        var googleWaypoints = stops.map(function(stop) {
+            return stop.lat + ',' + stop.lon;
+        }).join('|');
+
+        return {
+            apple: 'https://maps.apple.com/?saddr=' + start + '&daddr=' + appleDaddr + '&dirflg=d',
+            google: 'https://www.google.com/maps/dir/?api=1&origin=' + start + '&destination=' + googleDestination + '&waypoints=' + googleWaypoints + '&travelmode=driving'
+        };
+    }
+
+    function renderSavedRoutes(routes) {
+        $savedRoutesList.empty();
+
+        if (!routes.length) {
+            $savedRoutesList.html('<p class="muted-text">No saved routes yet.</p>');
+            return;
+        }
+
+        routes.forEach(function(savedRoute) {
+            var stops = Array.isArray(savedRoute.stops) ? savedRoute.stops : [];
+            var stopsCount = stops.length;
+            var links = buildSavedRouteMapLinks(savedRoute);
+            var $card = $('<div class="saved-route-card"></div>');
+            $card.append(
+                '<div class="saved-route-title">' + savedRoute.name + '</div>' +
+                '<div class="saved-route-meta"><strong>From:</strong> ' + savedRoute.start.name + '</div>' +
+                '<div class="saved-route-meta"><strong>To:</strong> ' + savedRoute.end.name + '</div>' +
+                '<div class="saved-route-meta"><strong>Stops:</strong> ' + stopsCount + '</div>' +
+                '<div class="saved-route-meta"><strong>Drive Time:</strong> ' + formatDuration(savedRoute.total_duration_minutes) + '</div>' +
+                '<div class="saved-route-meta"><strong>Distance:</strong> ' + savedRoute.total_distance_miles + ' miles</div>'
+            );
+
+            if (stopsCount) {
+                var $stopsPreview = $('<div class="saved-route-stops-preview"></div>');
+                $stopsPreview.append('<div class="saved-route-stops-title">Stop preview</div>');
+
+                stops.forEach(function(stop, index) {
+                    var label = String(index + 1) + '. ' + (stop.name || 'Unnamed stop');
+                    var extra = stop.category ? ' (' + stop.category + ')' : '';
+                    $stopsPreview.append('<div class="saved-route-stop-item">' + label + extra + '</div>');
+                });
+
+                $card.append($stopsPreview);
+            }
+
+            $card.append(
+                '<a class="primary-button" href="' + links.apple + '" target="_blank" rel="noopener">Open in Apple Maps</a>' +
+                '<a class="primary-button" href="' + links.google + '" target="_blank" rel="noopener">Open in Google Maps</a>'
+            );
+
+            $savedRoutesList.append($card);
+        });
+    }
+
+    function openSavedRoutesPanel() {
+        if (!isAuthenticated()) return;
+        showPanel('saved-routes');
+        $savedRoutesList.html('<p class="loading-hint">Loading your saved routes…</p>');
+
+        fetchSavedRoutes()
+            .done(function(routes) {
+                renderSavedRoutes(routes || []);
+            })
+            .fail(function(xhr) {
+                const d = xhr.responseJSON || {};
+                $savedRoutesList.html(
+                    '<p class="muted-text">' + (d.error || 'Could not load saved routes.') + '</p>'
+                );
+            });
+    }
+
+    $('#open-saved-routes-button').on('click', openSavedRoutesPanel);
+
     // -----------------------------------------------
     // Prefs panel
     // -----------------------------------------------
@@ -222,7 +326,7 @@ function initApp() {
         $('#find-stops-button').prop('disabled', true);
         $('#find-stops-loading').removeAttr('hidden');
 
-        postJson('/api/find-stops', {
+        const basePayload = {
             start_location:          routeData.start.name,
             end_location:            routeData.end.name,
             duration_text:           formatDuration(routeData.duration_minutes),
@@ -230,19 +334,44 @@ function initApp() {
             allowed_detour_hours:    parseInt($('#detour-hours').val()   || '0', 10),
             allowed_detour_minutes:  parseInt($('#detour-minutes').val() || '0', 10),
             stop_categories:         categories,
-        }).done(function(data) {
-            $('#find-stops-button').prop('disabled', false);
-            $('#find-stops-loading').attr('hidden', true);
-            renderStopsPanel(data);
-            showPanel('stops');
-        }).fail(function(xhr) {
-            $('#find-stops-button').prop('disabled', false);
-            $('#find-stops-loading').attr('hidden', true);
-            if (xhr.statusText !== 'abort') {
-                const d = xhr.responseJSON || {};
-                alert(d.error || 'Unable to find stops. Please try again.');
+        };
+
+        let quickFinished = false;
+        let fullFinished = false;
+
+        function finishIfDone() {
+            if (quickFinished && fullFinished) {
+                $('#find-stops-button').prop('disabled', false);
+                $('#find-stops-loading').attr('hidden', true);
             }
-        });
+        }
+
+        postJson('/api/find-stops', Object.assign({stage: 'quick'}, basePayload))
+            .done(function(data) {
+                quickFinished = true;
+                renderStopsPanel(data);
+                showPanel('stops');
+                finishIfDone();
+            })
+            .fail(function() {
+                quickFinished = true;
+                finishIfDone();
+            });
+
+        postJson('/api/find-stops', Object.assign({stage: 'full'}, basePayload))
+            .done(function(data) {
+                fullFinished = true;
+                mergeStopsIntoFeed(data);
+                finishIfDone();
+            })
+            .fail(function(xhr) {
+                fullFinished = true;
+                finishIfDone();
+                if (xhr.statusText !== 'abort' && !quickFinished) {
+                    const d = xhr.responseJSON || {};
+                    alert(d.error || 'Unable to find stops. Please try again.');
+                }
+            });
     });
 
     // -----------------------------------------------
@@ -250,9 +379,9 @@ function initApp() {
     // -----------------------------------------------
 
     function clearStopMarkers() {
-        $.each(stopMarkers, function(id, marker) { map.removeLayer(marker); });
-        stopMarkers   = {};
+        removeAllStopMarkers();
         selectedStops = [];
+        routeLegData = null;
     }
 
     function renderSelectedStops() {
@@ -331,6 +460,32 @@ function initApp() {
         });
 
         renderSelectedStops();
+    }
+
+    function mergeStopsIntoFeed(data) {
+        if (!data || !data.stops || !data.stops.length) return;
+
+        const $feed = $('#stops-feed');
+        $feed.find('p.muted-text').remove();
+
+        const existingIds = new Set();
+        $feed.find('[data-stop-id]').each(function() {
+            existingIds.add($(this).attr('data-stop-id'));
+        });
+
+        data.stops.forEach(function(stop) {
+            if (existingIds.has(stop.id)) return;
+            $feed.append(buildStopCard(stop, function(addedStop) {
+                selectedStops.push(addedStop);
+
+                const marker = L.marker([addedStop.lat, addedStop.lon])
+                    .addTo(map)
+                    .bindPopup('<strong>' + addedStop.name + '</strong><br>' + addedStop.category);
+
+                stopMarkers[addedStop.id] = marker;
+                renderSelectedStops();
+            }));
+        });
     }
 
     $('#preview-route-button').on('click', function() {
@@ -473,12 +628,14 @@ function initApp() {
                 renderItinerary(data.legs);
                 renderDetailSummary(data);
                 updateMapsLink();
+                routeLegData = data;
             })
             .fail(function() {
                 renderItinerary(null);
                 $('#route-detail-summary').html(
                     '<p class="muted-text">Could not calculate route details.</p>'
                 );
+                routeLegData = null;
             });
     }
 
@@ -531,8 +688,37 @@ function initApp() {
         placeDetailMarkers();
         mapFitBounds(map, routeLayer);
         showPanel('route-detail');
+        $('#save-route-status').attr('hidden', true).text('');
         fetchLegs();
     }
+
+    $('#save-route-button').on('click', function() {
+        if (!isAuthenticated() || !routeData) return;
+
+        var $button = $('#save-route-button');
+        var $status = $('#save-route-status');
+        var originalText = $button.text();
+
+        $button.prop('disabled', true).text('Saving…');
+        $status.attr('hidden', true).text('');
+
+        saveRoute({
+            route_name: '',
+            start: routeData.start,
+            end: routeData.end,
+            stops: selectedStops,
+            route_geojson: routeLegData ? routeLegData.route_geojson : routeData.route,
+            total_distance_miles: routeLegData ? routeLegData.total_distance_miles : routeData.distance_miles,
+            total_duration_minutes: routeLegData ? routeLegData.total_duration_minutes : routeData.duration_minutes
+        }).done(function(res) {
+            $status.text((res && res.message) || 'Route saved.').removeAttr('hidden');
+        }).fail(function(xhr) {
+            const d = xhr.responseJSON || {};
+            $status.text(d.error || 'Could not save route.').removeAttr('hidden');
+        }).always(function() {
+            $button.prop('disabled', false).text(originalText);
+        });
+    });
 
     // -----------------------------------------------
     // Boot
