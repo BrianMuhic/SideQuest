@@ -62,7 +62,7 @@ def send_email(
 
     email = _create_email(
         db=db,
-        sender=(_clean_emails(sender) or _clean_emails(config.MAIL_SENDER))[0],  # type: ignore
+        sender=(_clean_emails(sender) or _clean_emails(config.MAIL_DEFAULT_SENDER))[0],  # type: ignore
         recipients=_clean_emails(to),
         cc=_clean_emails(cc),
         bcc=_clean_emails(bcc),

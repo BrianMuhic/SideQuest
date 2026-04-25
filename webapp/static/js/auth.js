@@ -122,6 +122,15 @@ function authLogin() {
 function authRegister() {
 	const form = document.getElementById('register-form');
 	const data = new FormData(form);
+	const emailInput = form.querySelector('input[name="email"]');
+
+	if (!emailInput || !emailInput.value) {
+		document.getElementById('register-error').textContent = 'Email is required';
+		return;
+	}
+
+	const email = emailInput.value;
+
 	addCsrfToken(data);
 
 	$.ajax({
@@ -155,4 +164,73 @@ function authLogout() {
 		authTab('login');
 		authClose();
 	}).fail(ajaxFailure);
+}
+
+function authForgotPassword() {
+	const form = document.getElementById('login-form');
+
+	const input =
+		form.querySelector('input[name="login"]') ||
+		form.querySelector('input[name="username"]');
+
+	if (!input || !input.value) {
+		document.getElementById('login-error').textContent =
+			'Enter your username or email to reset password';
+		return;
+	}
+
+	const loginValue = input.value;
+
+	const data = new FormData();
+	data.append('username', loginValue);
+
+	addCsrfToken(data);
+
+	$.ajax({
+		type: 'POST',
+		url: '/account/forgot-password',
+		data: data,
+		processData: false,
+		contentType: false,
+	}).done(function() {
+		document.getElementById('login-error').textContent =
+			'If that account exists, a reset link has been sent.';
+	}).fail(function(xhr) {
+		document.getElementById('login-error').textContent =
+			authErrorMessage(xhr, 'Request failed');
+	});
+}
+
+function authResetPassword(token) {
+	const passwordEl = document.getElementById('password');
+	const confirmEl = document.getElementById('confirm_password');
+
+	if (!passwordEl || !confirmEl) {
+		console.error("Reset password DOM missing");
+		return;
+	}
+
+	const password = passwordEl.value;
+	const confirm = confirmEl.value;
+
+
+	const data = new FormData();
+	data.append('password', password);
+	data.append('confirm_password', confirm); 
+	addCsrfToken(data);
+
+
+	$.ajax({
+		type: 'POST',
+		url: `/account/reset_password/${token}`,
+		data: data,
+		processData: false,
+		contentType: false,
+	}).done(function() {
+		alert('Password updated successfully');
+		window.location.href = '/';
+	}).fail(function(xhr) {
+		document.getElementById('reset-error').textContent =
+			authErrorMessage(xhr, 'Reset failed');
+	});
 }

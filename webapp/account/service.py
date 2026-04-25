@@ -20,6 +20,13 @@ from core.app.extensions import login_manager
 from core.db.engine import use_db
 from core.service.logger import get_logger
 from core.util.date import now_utc
+from sqlalchemy import or_
+
+import secrets
+from sqlalchemy.orm import Session
+from config import config
+
+from core.service.emailer import send_email
 
 log = get_logger()
 
@@ -47,6 +54,15 @@ def get_user() -> User | None:
         return cast(User, current_user)
     return None
 
+def get_user_by_login(db, login):
+    return db.scalar(
+        select(User).where(
+            or_(
+                User.username == login,
+                User.email == login
+            )
+        )
+    )
 
 def require_user() -> User:
     """Get current logged-in user.
@@ -183,27 +199,42 @@ def user_session_timeout() -> None:
 
 # ============================== User Management ============================== #
 
+def forgot_password(db: Session, login: str) -> None:
+
+    user = get_user_by_login(db, login)
+
+    if not user:
+        return
+
+    token = secrets.token_hex(16)
+    user.access_token = token
+
+    reset_link = f"{config.APP_URL}/account/reset_password/{token}"
+
+
+    send_email(
+        db=db,
+        to=[user.email], 
+        subject="Reset your password",
+        body=f"""
+        Click the link to reset your password:
+        {reset_link}
+        """,
+    )
+
+def reset_password(db: Session, access_token: str, password: str) -> None:
+    user = db.scalar(select(User).filter_by(access_token=access_token.strip()))
+
+    if user is None:
+        raise ValueError("Invalid or expired access token")
+
+    log.i(f"Reset password for {user}")
+
+    user.set_password(password)
+    user.access_token = None  
+
+
 
 # def change_password(user: User, new_password: str) -> None:
 #     user.set_password(new_password)
 #     log.i(f"Change password for {user}")
-
-
-# def forgot_password(db: Session, email: str) -> None:
-#     if user := User.with_email(db, email):
-#         log.i(f"Forgot password submission for {user}")
-#         user.access_token = secrets.token_hex(16)
-#         # TODO: Send forgot password message
-#     else:
-#         log.w(f"Forgot password submission for nonexistent email '{email}'")
-
-
-# def reset_password(db: Session, access_token: str, password: str) -> None:
-#     user = db.scalar(select(User).filter_by(access_token=access_token.strip()))
-#     if user is None:
-#         raise BadRequest("Invalid access token")
-
-#     log.i(f"Reset password for {user}")
-
-#     user.set_password(password)
-#     user.access_token = None

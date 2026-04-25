@@ -22,16 +22,30 @@ log = get_logger()
 
 
 class LoginForm(BaseForm):
-    username = StringField("Username", filters=[str_strip, str_lower], validators=[DataRequired()])
-    password = PasswordField("Password", filters=[str_strip], validators=[DataRequired()])
+    login = StringField(
+        "Login",
+        filters=[str_strip, str_lower],
+        validators=[DataRequired()],
+    )
+    password = PasswordField(
+        "Password",
+        filters=[str_strip],
+        validators=[DataRequired()],
+    )
 
     def validate(self, extra_validators=None) -> bool:
         if not super().validate(extra_validators):
             return False
 
-        user = User.with_username(self.db, self.username.data)  # type: ignore
-        if not user or not user.check_password(self.password.data):  # type: ignore
-            return form_error(self.username, "Invalid username or password")
+        login_value = self.login.data
+
+        user = (
+            User.with_username(self.db, login_value)
+            or User.with_email(self.db, login_value)
+        )
+
+        if not user or not user.check_password(self.password.data):
+            return form_error(self.login, "Invalid username or email or password")
 
         self.user = user
 
@@ -47,6 +61,11 @@ class InitialRegistrationForm(BaseForm):
         filters=[str_strip, str_lower],
         validators=[Length(min=1, max=256)],
     )
+    email = StringField(
+        "Email",
+        filters=[str_strip, str_lower],
+        validators=[DataRequired()],
+    )
     password = PasswordField(
         "Password",
         filters=[str_strip],
@@ -61,10 +80,39 @@ class InitialRegistrationForm(BaseForm):
             raise ValidationError("This username is already taken")
 
     def export(self) -> User:
-        user = User(username=self.username.data)
-        user.set_password(self.password.data)  # type: ignore
+        user = User(
+            username=self.username.data,
+            email=self.email.data, 
+        )
+        user.set_password(self.password.data)
         user.add(self.db, flush=True)
 
         log.i(f"Registered {user}")
 
         return user
+
+class ForgotPasswordForm(BaseForm):
+    username = StringField(
+        "Username",
+        filters=[str_strip, str_lower],
+        validators=[DataRequired()],
+    )
+
+    def export(self) -> str:
+        return self.username.data
+    
+class ResetPasswordForm(BaseForm):
+    password = PasswordField(
+        "Password",
+        filters=[str_strip],
+        validators=[Length(min=4, max=256)],
+    )
+
+    confirm_password = PasswordField(
+        "Repeat Password",
+        filters=[str_strip],
+        validators=[EqualTo("password")],
+    )
+
+    def export(self) -> str:
+        return self.password.data

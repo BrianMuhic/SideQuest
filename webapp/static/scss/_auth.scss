@@ -127,3 +127,24 @@ body.authenticated .auth-toggle {
 		min-width: 260px;
 	}
 }
+
+.auth-dropdown .link-button {
+	background: none;
+	border: none;
+	padding: 0;
+	font-size: 0.85rem;
+	color: $text-muted;
+	cursor: pointer;
+	font-weight: 500;
+	transition: color 0.15s;
+
+	&:hover {
+		color: $blue-primary;
+		text-decoration: underline;
+	}
+
+	&:focus {
+		outline: none;
+		color: $blue-primary;
+	}
+}

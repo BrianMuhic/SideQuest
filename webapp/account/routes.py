@@ -2,7 +2,12 @@ from flask.typing import ResponseReturnValue
 from sqlalchemy.orm import Session
 
 from account import service
-from account.forms import InitialRegistrationForm, LoginForm
+from account.forms import (
+    InitialRegistrationForm,
+    LoginForm,
+    ForgotPasswordForm,
+    ResetPasswordForm,
+)
 from account.service import guest_required
 from core.app.blueprint import BaseBlueprint
 from core.db.engine import use_db
@@ -50,6 +55,38 @@ def register(db: Session) -> ResponseReturnValue:
         return {"username": user.username}
     return form.errors, form.status_code
 
+@bp.post("/forgot-password")
+@guest_required
+@use_db
+def forgot_password_route(db: Session):
+    form = ForgotPasswordForm(db)
+
+    if form.validate():
+        service.forgot_password(db, form.export())
+        return {"status": "ok"}
+
+    return form.errors, form.status_code
+
+@bp.post("/reset_password/<access_token>")
+@guest_required
+@use_db
+def reset_password_route(db: Session, access_token: str):
+    form = ResetPasswordForm(db)
+
+    if form.validate():
+        service.reset_password(db, access_token, form.export())
+        return {"status": "password_updated"}
+
+    return form.errors, form.status_code
+
+from flask import render_template
+
+@bp.get("/reset_password/<access_token>")
+@guest_required
+def reset_password_page(access_token: str):
+    return render_template("reset_password.html", token=access_token)
+
+
 
 # @bp.get_post("/edit-registration")
 # @bp.get_post("/edit-registration/<int:user_id>")
@@ -88,34 +125,3 @@ def register(db: Session) -> ResponseReturnValue:
 #         form=form,
 #     )
 
-
-# @bp.get_post("/forgot-password")
-# @guest_required
-# @use_db
-# def forgot_password(db: Session) -> ResponseReturnValue:
-#     form = ForgotPasswordForm(db)
-
-#     if form.validate_on_submit():
-#         return service.forgot_password(db, form.export())
-
-#     return render_template(
-#         "forgot-password.html",
-#         title="Forgot password",
-#         form=form,
-#     )
-
-
-# @bp.get_post("/reset-password/<access_token>")
-# @guest_required
-# @use_db
-# def reset_password(db: Session, access_token: str) -> ResponseReturnValue:
-#     form = ResetPasswordForm(db)
-
-#     if form.validate_on_submit():
-#         return service.reset_password(db, access_token, form.export())
-
-#     return render_template(
-#         "reset-password.html",
-#         title="Reset password",
-#         form=form,
-#     )
