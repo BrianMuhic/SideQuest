@@ -43,6 +43,55 @@ def _api_response(
     )
 
 
+def get_stop_image(category: str | None) -> str:
+    category = (category or "").lower()
+
+    if "coffee" in category or "cafe" in category:
+        return "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80"
+
+    if "restaurant" in category or "food" in category:
+        return "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80"
+
+    if "park" in category or "hike" in category or "trail" in category:
+        return "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80"
+
+    if "museum" in category:
+        return "https://images.unsplash.com/photo-1565060169187-6f5f06e1f3ec?auto=format&fit=crop&w=900&q=80"
+
+    if "attraction" in category or "landmark" in category:
+        return "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=900&q=80"
+
+    if "shopping" in category or "store" in category:
+        return "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=80"
+
+    if "hotel" in category or "lodging" in category:
+        return "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80"
+
+    return "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80"
+
+
+def add_stop_images(stops: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    updated_stops = []
+
+    for stop in stops:
+        updated_stop = dict(stop)
+
+        category = (
+            updated_stop.get("category")
+            or updated_stop.get("type")
+            or updated_stop.get("amenity")
+            or updated_stop.get("tourism")
+            or ""
+        )
+
+        if not updated_stop.get("image_url"):
+            updated_stop["image_url"] = get_stop_image(str(category))
+
+        updated_stops.append(updated_stop)
+
+    return updated_stops
+
+
 @bp.post("/api/find-stops")
 def find_stops() -> ResponseReturnValue:
     start_location = require_json("start_location", str)
@@ -53,6 +102,7 @@ def find_stops() -> ResponseReturnValue:
 
     total_detour_minutes = (detour_hours * 60) + detour_minutes
     stage = get_json("stage", str, "full")
+
     stops, route_geojson = service.find_stops(
         start_location,
         end_location,
@@ -61,12 +111,15 @@ def find_stops() -> ResponseReturnValue:
         quick=(stage == "quick"),
     )
 
+    stops = add_stop_images(stops)
+
     data = {
         "stops": stops,
         "route_geojson": route_geojson,
         "allowed_detour_text": service.friendly_detour_text(detour_hours, detour_minutes),
     }
-    return _api_response(data)
+
+    return _api_response(data, cache=False)
 
 
 @bp.post("/api/route-legs")
@@ -92,6 +145,28 @@ def location_suggestions() -> ResponseReturnValue:
         return _api_response([], cache=False)
 
     return _api_response(service.get_location_suggestions(query), cache=False)
+
+
+@bp.get("/api/place-photo")
+def place_photo() -> ResponseReturnValue:
+    photo_name = get_param("name", str, "")
+
+    if not photo_name:
+        raise BadRequest("Photo name is required.")
+
+    try:
+        image_bytes, content_type = service.get_google_place_photo(photo_name)
+    except ValueError as e:
+        raise NotFound(str(e))
+
+    return Response(
+        response=image_bytes,
+        status=HTTPStatus.OK,
+        headers={
+            "Content-Type": content_type,
+            "Cache-Control": _CACHE_HEADER,
+        },
+    )
 
 
 @bp.get("/api/route-preview")
@@ -122,6 +197,8 @@ def save_route(db: Session) -> ResponseReturnValue:
     route_geojson = require_json("route_geojson", dict)
     total_distance_miles = get_json("total_distance_miles", float, 0.0)
     total_duration_minutes = get_json("total_duration_minutes", int, 0)
+
+    stops = add_stop_images(stops)
 
     try:
         record = service.save_route_for_user(

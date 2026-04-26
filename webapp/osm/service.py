@@ -1,6 +1,8 @@
+import os
 import re
 from math import atan2, cos, radians, sin, sqrt
 from typing import Any
+from urllib.parse import quote
 
 import requests
 from sqlalchemy.orm import Session
@@ -11,8 +13,6 @@ from osm.models import SavedRoute
 
 log = get_logger()
 
-
-# Overpass tag filters by category. A leading "~" on a value marks it as a regex.
 _CATEGORY_TAG_FILTERS: dict[str, list[tuple[str, str]]] = {
     "gas": [("amenity", "fuel")],
     "food": [("amenity", "restaurant"), ("amenity", "fast_food"), ("amenity", "cafe")],
@@ -30,6 +30,10 @@ _SCENIC_FILTERS: list[tuple[str, str]] = [
     ("natural", "peak"),
     ("highway", "trailhead"),
 ]
+
+_GOOGLE_PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
+_GOOGLE_PLACE_PHOTO_URL = "https://places.googleapis.com/v1"
+_google_photo_cache: dict[str, str | None] = {}
 
 
 def _get_json(url: str, params: dict | None = None, timeout: int = 120) -> dict | list:
@@ -121,6 +125,7 @@ def _commons_thumb_from_title(file_title: str) -> str | None:
         return None
     if not clean_title.startswith("File:"):
         clean_title = f"File:{clean_title}"
+
     try:
         data = _get_json(
             config.WIKIMEDIA_URL,
@@ -135,13 +140,14 @@ def _commons_thumb_from_title(file_title: str) -> str | None:
             },
             timeout=5,
         )
-        pages = data.get("query", {}).get("pages", {})  # type: ignore[unresolved-attribute]
+        pages = data.get("query", {}).get("pages", {})
         for page in pages.values():
             imageinfo = page.get("imageinfo", [])
             if imageinfo:
                 return imageinfo[0].get("thumburl") or imageinfo[0].get("url")
     except Exception:
         return None
+
     return None
 
 
@@ -150,6 +156,150 @@ def _photo_url_from_tags(tags: dict) -> str | None:
     if commons_value:
         return _commons_thumb_from_title(commons_value)
     return None
+
+
+def _google_places_api_key() -> str:
+    return os.environ.get("GOOGLE_PLACES_API_KEY", "").strip()
+
+
+def _google_photo_proxy_url(photo_name: str) -> str:
+    return "/api/place-photo?name=" + quote(photo_name, safe="")
+
+
+def _google_place_photo_name(stop_name: str, address: str, lat: float, lon: float) -> str | None:
+    api_key = _google_places_api_key()
+
+    if not api_key:
+        return None
+
+    cache_key = f"{stop_name}|{address}|{round(lat, 4)}|{round(lon, 4)}"
+
+    if cache_key in _google_photo_cache:
+        return _google_photo_cache[cache_key]
+
+    text_query = stop_name
+
+    if address and address != "Address not available":
+        text_query = f"{stop_name}, {address}"
+
+    payload = {
+        "textQuery": text_query,
+        "locationBias": {
+            "circle": {
+                "center": {
+                    "latitude": lat,
+                    "longitude": lon,
+                },
+                "radius": 800.0,
+            }
+        },
+        "maxResultCount": 1,
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": api_key,
+        "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.location,places.photos.name",
+    }
+
+    try:
+        response = requests.post(
+            _GOOGLE_PLACES_TEXT_SEARCH_URL,
+            json=payload,
+            headers=headers,
+            timeout=8,
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        places = data.get("places", [])
+
+        if not places:
+            _google_photo_cache[cache_key] = None
+            return None
+
+        place = places[0]
+        location = place.get("location", {})
+        place_lat = location.get("latitude")
+        place_lon = location.get("longitude")
+
+        if place_lat is not None and place_lon is not None:
+            distance = _haversine_miles(lat, lon, float(place_lat), float(place_lon))
+
+            if distance > 1.0:
+                _google_photo_cache[cache_key] = None
+                return None
+
+        photos = place.get("photos", [])
+
+        if not photos:
+            _google_photo_cache[cache_key] = None
+            return None
+
+        photo_name = photos[0].get("name")
+        _google_photo_cache[cache_key] = photo_name
+        return photo_name
+
+    except Exception as e:
+        log.w(f"Google Places photo lookup failed for {stop_name!r}: {e}")
+        _google_photo_cache[cache_key] = None
+        return None
+
+
+def _google_photo_url_for_stop(stop: dict) -> str | None:
+    photo_name = _google_place_photo_name(
+        str(stop.get("name", "")),
+        str(stop.get("address", "")),
+        float(stop.get("lat")),
+        float(stop.get("lon")),
+    )
+
+    if not photo_name:
+        return None
+
+    return _google_photo_proxy_url(photo_name)
+
+
+def _attach_google_photos(stops: list[dict]) -> list[dict]:
+    if not _google_places_api_key():
+        return stops
+
+    for stop in stops:
+        if stop.get("photo_url"):
+            continue
+
+        google_photo_url = _google_photo_url_for_stop(stop)
+
+        if google_photo_url:
+            stop["photo_url"] = google_photo_url
+
+    return stops
+
+
+def get_google_place_photo(photo_name: str) -> tuple[bytes, str]:
+    api_key = _google_places_api_key()
+
+    if not api_key:
+        raise ValueError("Google Places API key is not configured.")
+
+    clean_name = photo_name.strip()
+
+    if not clean_name.startswith("places/"):
+        raise ValueError("Invalid photo name.")
+
+    response = requests.get(
+        f"{_GOOGLE_PLACE_PHOTO_URL}/{clean_name}/media",
+        params={
+            "maxWidthPx": 900,
+            "key": api_key,
+        },
+        timeout=15,
+    )
+
+    response.raise_for_status()
+
+    content_type = response.headers.get("Content-Type", "image/jpeg")
+    return response.content, content_type
 
 
 def _overpass_clause(key: str, value: str, lat: float, lon: float, radius: int) -> str:
@@ -174,7 +324,6 @@ def _is_small_local_park(tags: dict) -> bool:
 
 
 def _build_tag_filters(stop_categories: list[str]) -> list[tuple[str, str]]:
-    """Builds the list of Overpass tag filters from stop category names."""
     tag_filters: list[tuple[str, str]] = []
     for category in stop_categories:
         if category in _CATEGORY_TAG_FILTERS:
@@ -185,7 +334,6 @@ def _build_tag_filters(stop_categories: list[str]) -> list[tuple[str, str]]:
 
 
 def _build_address(tags: dict) -> str:
-    """Assembles a human-readable address string from OSM tags."""
     address_parts = []
     if tags.get("addr:housenumber") and tags.get("addr:street"):
         address_parts.append(f"{tags['addr:housenumber']} {tags['addr:street']}")
@@ -199,9 +347,9 @@ def _build_address(tags: dict) -> str:
 def _process_overpass_element(
     element: dict, route_coordinates: list[list[float]], stop_categories: list[str]
 ) -> tuple[str, dict] | None:
-    """Validates and converts a single Overpass element into a stop entry, returning None if it should be skipped."""
     tags = element.get("tags", {})
     name = tags.get("name")
+
     if not name:
         return None
 
@@ -209,10 +357,12 @@ def _process_overpass_element(
         return None
 
     stop_lat, stop_lon = _extract_center(element)
+
     if stop_lat is None or stop_lon is None:
         return None
 
     key = f"{name}-{round(stop_lat, 5)}-{round(stop_lon, 5)}"
+    address = _build_address(tags)
 
     stop = {
         "id": key,
@@ -231,7 +381,7 @@ def _process_overpass_element(
             or tags.get("boundary")
             or "Interesting stop near your route"
         ),
-        "address": _build_address(tags),
+        "address": address,
         "photo_url": _photo_url_from_tags(tags),
     }
 
@@ -251,7 +401,6 @@ def _find_stops_along_route(
         return []
 
     detour_radius_meters = max(1600, min(32000, allowed_detour_minutes * 800))
-
     tag_filters = _build_tag_filters(stop_categories)
 
     if not tag_filters:
@@ -266,6 +415,7 @@ def _find_stops_along_route(
             query_points = [sampled_points[round(i * stride)] for i in range(max_points)]
         else:
             query_points = sampled_points
+
     clauses = [
         _overpass_clause(key, value, lat, lon, detour_radius_meters)
         for lon, lat in query_points
@@ -283,16 +433,16 @@ def _find_stops_along_route(
         result = {"elements": []}
 
     results_by_key: dict[str, dict] = {}
+
     for element in result.get("elements", []):
         processed = _process_overpass_element(element, sampled_points, stop_categories)
+
         if processed is None or processed[0] in results_by_key:
             continue
+
         key, stop = processed
         results_by_key[key] = stop
 
-    # Bucket stops by which third of the route they fall in, then take the
-    # top closest-to-route stops from each segment so the middle of the
-    # route gets representation even when one end is much denser (e.g. DC).
     def _segment_index(stop: dict) -> int:
         nearest = min(
             range(len(sampled_points)),
@@ -303,22 +453,27 @@ def _find_stops_along_route(
         return min(2, nearest * 3 // max(1, len(sampled_points)))
 
     stops_by_segment: list[list[dict]] = [[], [], []]
+
     for stop in results_by_key.values():
         stops_by_segment[_segment_index(stop)].append(stop)
 
     per_segment_quota = 14
     selected: list[dict] = []
+
     for bucket in stops_by_segment:
         bucket.sort(key=lambda s: (s["distance_off_route_miles"], s["name"].lower()))
         selected.extend(bucket[:per_segment_quota])
 
     selected.sort(key=_segment_index)
-    return selected[:40]
+    selected = selected[:40]
+
+    return _attach_google_photos(selected)
 
 
 def _geocode(location: str) -> dict | None:
     results = _get_json(
-        config.NOMINATIM_URL, {"q": location, "format": "jsonv2", "limit": 1, "countrycodes": "us"}
+        config.NOMINATIM_URL,
+        {"q": location, "format": "jsonv2", "limit": 1, "countrycodes": "us"},
     )
     return results[0] if results else None
 
@@ -328,7 +483,7 @@ def _get_route(start_lon: float, start_lat: float, end_lon: float, end_lat: floa
         f"{config.OSRM_URL}/{start_lon},{start_lat};{end_lon},{end_lat}",
         {"overview": "full", "geometries": "geojson", "steps": "false"},
     )
-    routes = route_data.get("routes", [])  # type: ignore[unresolved-attribute]
+    routes = route_data.get("routes", [])
     return routes[0] if routes else None
 
 
@@ -369,6 +524,7 @@ def find_stops(
     stops = _find_stops_along_route(
         route["geometry"], stop_categories, total_detour_minutes, quick=quick
     )
+
     log.i(f"Found {len(stops)} stops: {start_location!r} -> {end_location!r}")
     return stops, route["geometry"]
 
@@ -379,11 +535,13 @@ def get_location_suggestions(query: str) -> list[dict]:
         config.NOMINATIM_URL,
         {"q": query, "format": "jsonv2", "limit": 5, "addressdetails": 1, "countrycodes": "us"},
     )
+
     suggestions = [
         {"label": item["display_name"], "lat": float(item["lat"]), "lon": float(item["lon"])}
         for item in data
         if item.get("display_name") and item.get("lat") and item.get("lon")
     ]
+
     log.i(f"Location suggestions: found {len(suggestions)} for {query!r}")
     return suggestions
 
@@ -396,7 +554,8 @@ def get_route_legs(waypoints: list[dict]) -> dict:
         f"{config.OSRM_URL}/{coords}",
         {"overview": "full", "geometries": "geojson", "steps": "false"},
     )
-    routes = route_data.get("routes", [])  # type: ignore[unresolved-attribute]
+    routes = route_data.get("routes", [])
+
     if not routes:
         log.w("No route found for waypoints")
         raise ValueError("No drivable route was found for the given waypoints.")
@@ -415,6 +574,7 @@ def get_route_legs(waypoints: list[dict]) -> dict:
     log.i(
         f"Route legs: {len(legs)} legs, {round(total_distance, 1)} mi, {round(total_duration)} min"
     )
+
     return {
         "legs": legs,
         "total_distance_miles": round(total_distance, 1),
@@ -436,20 +596,27 @@ def get_route_preview(start: str, end: str) -> dict:
     end_lat, end_lon = float(end_place["lat"]), float(end_place["lon"])
 
     route = _get_route(start_lon, start_lat, end_lon, end_lat)
+
     if not route:
         log.w(f"No route found: {start!r} -> {end!r}")
         raise ValueError("No drivable route was found.")
 
     distance_miles = round(route["distance"] * 0.000621371, 1)
     duration_minutes = round(route["duration"] / 60)
+
     log.i(f"Route preview: {distance_miles} mi, {duration_minutes} min")
+
     return {
         "start": {
             "name": start_place.get("display_name", start),
             "lat": start_lat,
             "lon": start_lon,
         },
-        "end": {"name": end_place.get("display_name", end), "lat": end_lat, "lon": end_lon},
+        "end": {
+            "name": end_place.get("display_name", end),
+            "lat": end_lat,
+            "lon": end_lon,
+        },
         "route": route["geometry"],
         "distance_miles": distance_miles,
         "duration_minutes": duration_minutes,
@@ -458,6 +625,7 @@ def get_route_preview(start: str, end: str) -> dict:
 
 def _normalize_point(point: dict[str, Any], label: str) -> tuple[str, float, float]:
     name = str(point.get("name", "")).strip()
+
     if not name:
         raise ValueError(f"{label} location name is required.")
 
@@ -472,9 +640,11 @@ def _normalize_point(point: dict[str, Any], label: str) -> tuple[str, float, flo
 
 def _normalize_stops(stops: list[dict[str, Any]]) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
+
     for stop in stops:
         if not isinstance(stop, dict):
             continue
+
         try:
             lat = float(stop["lat"])
             lon = float(stop["lon"])
@@ -490,6 +660,7 @@ def _normalize_stops(stops: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "lon": lon,
             }
         )
+
     return normalized
 
 
@@ -526,6 +697,7 @@ def save_route_for_user(
         total_distance_miles=float(total_distance_miles),
         total_duration_minutes=max(0, int(total_duration_minutes)),
     )
+
     record.add(db, flush=True)
     log.i(f"Saved route {record.id} for user {user_id}")
     return record
@@ -533,12 +705,21 @@ def save_route_for_user(
 
 def list_saved_routes_for_user(db: Session, user_id: int) -> list[dict[str, Any]]:
     routes = SavedRoute.for_user(db, user_id)
+
     return [
         {
             "id": route.id,
             "name": route.name,
-            "start": {"name": route.start_name, "lat": route.start_lat, "lon": route.start_lon},
-            "end": {"name": route.end_name, "lat": route.end_lat, "lon": route.end_lon},
+            "start": {
+                "name": route.start_name,
+                "lat": route.start_lat,
+                "lon": route.start_lon,
+            },
+            "end": {
+                "name": route.end_name,
+                "lat": route.end_lat,
+                "lon": route.end_lon,
+            },
             "stops": route.stops,
             "route_geojson": route.route_geojson,
             "total_distance_miles": route.total_distance_miles,
