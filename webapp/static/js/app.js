@@ -682,7 +682,27 @@ function initApp() {
         );
     }
 
+    function nearestRouteIndex(lat, lon, coords) {
+        var best = Infinity, bestIdx = 0;
+        for (var i = 0; i < coords.length; i++) {
+            var dlat = lat - coords[i][1], dlon = lon - coords[i][0];
+            var d = dlat * dlat + dlon * dlon;
+            if (d < best) { best = d; bestIdx = i; }
+        }
+        return bestIdx;
+    }
+
+    function sortStopsByRoutePosition(stops) {
+        var coords = routeData && routeData.route && routeData.route.coordinates;
+        if (!coords || !coords.length) return stops;
+        return stops.slice().sort(function(a, b) {
+            return nearestRouteIndex(a.lat, a.lon, coords) -
+                nearestRouteIndex(b.lat, b.lon, coords);
+        });
+    }
+
     function showRouteDetailPanel() {
+        selectedStops = sortStopsByRoutePosition(selectedStops);
         clearRouteLayer();
         routeLayer = mapRouteLayer(map, routeData.route);
         placeDetailMarkers();

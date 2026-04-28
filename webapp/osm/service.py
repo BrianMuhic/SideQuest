@@ -464,7 +464,15 @@ def _find_stops_along_route(
         bucket.sort(key=lambda s: (s["distance_off_route_miles"], s["name"].lower()))
         selected.extend(bucket[:per_segment_quota])
 
-    selected.sort(key=_segment_index)
+    def _route_position_index(stop: dict) -> int:
+        return min(
+            range(len(sampled_points)),
+            key=lambda i: _haversine_miles(
+                stop["lat"], stop["lon"], sampled_points[i][1], sampled_points[i][0]
+            ),
+        )
+
+    selected.sort(key=_route_position_index)
     selected = selected[:40]
 
     return _attach_google_photos(selected)
