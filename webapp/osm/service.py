@@ -373,6 +373,8 @@ def _process_overpass_element(
         "distance_off_route_miles": _nearest_route_distance_miles(
             stop_lat, stop_lon, route_coordinates
         ),
+        "detour_minutes": None,
+        "detour_miles": None,
         "description": (
             tags.get("description")
             or tags.get("tourism")
@@ -478,6 +480,61 @@ def _find_stops_along_route(
     return _attach_google_photos(selected)
 
 
+def _enrich_and_filter_stops(
+    stops: list[dict],
+    start_lon: float,
+    start_lat: float,
+    end_lon: float,
+    end_lat: float,
+    base_duration_seconds: float,
+    base_distance_meters: float,
+    allowed_detour_minutes: int,
+) -> list[dict]:
+    if not stops:
+        return stops
+
+    coords = f"{start_lon},{start_lat}"
+    for s in stops:
+        coords += f";{s['lon']},{s['lat']}"
+    coords += f";{end_lon},{end_lat}"
+
+    end_idx = len(stops) + 1
+
+    table_url = config.OSRM_URL.replace("/route/v1/driving", "/table/v1/driving")
+
+    try:
+        data = _get_json(
+            f"{table_url}/{coords}",
+            {"annotations": "duration,distance"},
+        )
+        durations = data.get("durations", [])
+        distances = data.get("distances", [])
+    except Exception as e:
+        log.w(f"OSRM table call failed: {e}")
+        return stops
+
+    allowed_seconds = allowed_detour_minutes * 60
+    filtered = []
+
+    for i, stop in enumerate(stops):
+        stop_idx = i + 1
+
+        detour_duration = durations[0][stop_idx] + durations[stop_idx][end_idx]
+        detour_distance = distances[0][stop_idx] + distances[stop_idx][end_idx]
+
+        actual_extra_seconds = detour_duration - base_duration_seconds
+        actual_extra_miles = round((detour_distance - base_distance_meters) * 0.000621371, 1)
+
+        if actual_extra_seconds > allowed_seconds:
+            continue
+
+        stop["detour_minutes"] = max(0, round(actual_extra_seconds / 60))
+        stop["detour_miles"] = max(0.0, actual_extra_miles)
+        filtered.append(stop)
+
+    return filtered
+
+
 def _geocode(location: str) -> dict | None:
     results = _get_json(
         config.NOMINATIM_URL,
@@ -529,8 +586,22 @@ def find_stops(
         log.w(f"No route found: {start_location!r} -> {end_location!r}")
         return [], None
 
+    base_duration_seconds = route["duration"]
+    base_distance_meters = route["distance"]
+
     stops = _find_stops_along_route(
         route["geometry"], stop_categories, total_detour_minutes, quick=quick
+    )
+
+    stops = _enrich_and_filter_stops(
+        stops,
+        float(start_place["lon"]),
+        float(start_place["lat"]),
+        float(end_place["lon"]),
+        float(end_place["lat"]),
+        base_duration_seconds,
+        base_distance_meters,
+        total_detour_minutes,
     )
 
     log.i(f"Found {len(stops)} stops: {start_location!r} -> {end_location!r}")

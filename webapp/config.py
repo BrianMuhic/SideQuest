@@ -73,7 +73,8 @@ class Settings(BaseSettings):
 
     # OSM
     NOMINATIM_URL: str = "https://nominatim.openstreetmap.org/search"
-    OVERPASS_URL: str = "https://overpass-api.de/api/interpreter"
+    OVERPASS_URL: str = "http://localhost:5002/api/interpreter"
+    #OVERPASS_URL: str = "https://overpass-api.de/api/interpreter"
     OSRM_URL: str = "http://localhost:5001/route/v1/driving"
     # OSRM_URL: str = "https://router.project-osrm.org/route/v1/driving"
     WIKIMEDIA_URL: str = "https://commons.wikimedia.org/w/api.php"

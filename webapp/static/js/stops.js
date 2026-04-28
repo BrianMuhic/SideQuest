@@ -5,7 +5,8 @@ function buildStopCard(stop, onAdd) {
     const name = stop.name || 'Unnamed stop';
     const address = stop.address || '';
     const description = stop.description || '';
-    const distanceOffRoute = stop.distance_off_route_miles || stop.distance_off_route || '';
+    const detourMins = stop.detour_minutes != null ? stop.detour_minutes + ' min detour' : '';
+    const detourMiles = stop.detour_miles != null ? stop.detour_miles + ' mi added' : '';
     const imageUrl = stop.photo_url || stop.image_url || '';
 
     const photoHtml = imageUrl
@@ -20,7 +21,8 @@ function buildStopCard(stop, onAdd) {
             '<div class="stop-body">' +
                 '<div class="stop-meta">' +
                     '<span class="meta-badge">' + category + '</span>' +
-                    '<span class="meta-badge">' + distanceOffRoute + ' mi off route</span>' +
+                    '<span class="meta-badge">' + detourMins + '</span>' +
+'                    <span class="meta-badge">' + detourMiles + '</span>' +
                 '</div>' +
                 '<div class="stop-title-row">' +
                     '<h3>' + name + '</h3>' +
