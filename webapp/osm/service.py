@@ -477,7 +477,7 @@ def _find_stops_along_route(
     selected.sort(key=_route_position_index)
     selected = selected[:40]
 
-    return _attach_google_photos(selected)
+    return selected
 
 
 def _enrich_and_filter_stops(
@@ -603,6 +603,8 @@ def find_stops(
         base_distance_meters,
         total_detour_minutes,
     )
+
+    stops = _attach_google_photos(stops)
 
     log.i(f"Found {len(stops)} stops: {start_location!r} -> {end_location!r}")
     return stops, route["geometry"]
