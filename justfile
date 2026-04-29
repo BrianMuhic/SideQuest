@@ -179,7 +179,7 @@ overpass-container:
         $CMD run --rm -i \
             -e OVERPASS_MODE=init \
             -e OVERPASS_PLANET_URL=file:///osm/planet.osm.bz2 \
-            -e OVERPASS_RULES_LOAD=10 \
+            -e OVERPASS_RULES_LOAD=100 \
             -e OVERPASS_STOP_AFTER_INIT=true \
             -v "${PWD}/local/overpass:/db" \
             -v "${PWD}/local/planet.osm.bz2:/osm/planet.osm.bz2:ro" \

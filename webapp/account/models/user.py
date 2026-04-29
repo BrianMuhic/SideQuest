@@ -26,7 +26,7 @@ class User(BaseAudit, UserMixin):
     __tablename__ = "users"
 
     username: Str = mapped_column(index=True, unique=True)
-    email: Str = mapped_column(index=True, unique=True) 
+    email: Str = mapped_column(index=True, unique=True)
     role: Mapped[Role] = mapped_column(default=Role.USER)
 
     _password: Str
@@ -54,7 +54,7 @@ class User(BaseAudit, UserMixin):
     @classmethod
     def with_username(cls, db: Session, username: str) -> Self | None:
         return db.scalar(select(cls).filter_by(username=username))
-    
+
     @classmethod
     def with_email(cls, db: Session, email: str) -> Self | None:
         return db.scalar(select(cls).filter_by(email=email))
