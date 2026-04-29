@@ -460,9 +460,12 @@ function initApp() {
         });
 
         renderSelectedStops();
+        $feed.append('<div id="stops-loading-more" class="loading-more-indicator">Loading more SideQuests...</div>');
     }
 
     function mergeStopsIntoFeed(data) {
+        $('#stops-loading-more').remove();
+
         if (!data || !data.stops || !data.stops.length) return;
 
         const $feed = $('#stops-feed');
