@@ -37,14 +37,11 @@ class LoginForm(BaseForm):
         if not super().validate(extra_validators):
             return False
 
-        login_value = self.login.data
+        login_value: str = self.login.data
 
-        user = (
-            User.with_username(self.db, login_value)
-            or User.with_email(self.db, login_value)
-        )
+        user = User.with_username(self.db, login_value) or User.with_email(self.db, login_value)
 
-        if not user or not user.check_password(self.password.data):
+        if not user or not user.check_password(self.password.data):  # type: ignore
             return form_error(self.login, "Invalid username or email or password")
 
         self.user = user
@@ -82,14 +79,15 @@ class InitialRegistrationForm(BaseForm):
     def export(self) -> User:
         user = User(
             username=self.username.data,
-            email=self.email.data, 
+            email=self.email.data,
         )
-        user.set_password(self.password.data)
+        user.set_password(self.password.data)  # type: ignore
         user.add(self.db, flush=True)
 
         log.i(f"Registered {user}")
 
         return user
+
 
 class ForgotPasswordForm(BaseForm):
     username = StringField(
@@ -99,8 +97,9 @@ class ForgotPasswordForm(BaseForm):
     )
 
     def export(self) -> str:
-        return self.username.data
-    
+        return self.username.data  # type: ignore
+
+
 class ResetPasswordForm(BaseForm):
     password = PasswordField(
         "Password",
@@ -115,4 +114,4 @@ class ResetPasswordForm(BaseForm):
     )
 
     def export(self) -> str:
-        return self.password.data
+        return self.password.data  # type: ignore

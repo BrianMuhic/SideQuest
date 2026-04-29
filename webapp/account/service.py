@@ -1,3 +1,4 @@
+import secrets
 from functools import wraps
 from typing import Any, Callable, cast
 
@@ -10,23 +11,18 @@ from flask_login import (
     login_user,
     logout_user,
 )
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from account.models import User
+from config import config
 from core.app import endpoint
 from core.app.extensions import login_manager
 from core.db.engine import use_db
+from core.service.emailer import send_email
 from core.service.logger import get_logger
 from core.util.date import now_utc
-from sqlalchemy import or_
-
-import secrets
-from sqlalchemy.orm import Session
-from config import config
-
-from core.service.emailer import send_email
 
 log = get_logger()
 
@@ -54,15 +50,10 @@ def get_user() -> User | None:
         return cast(User, current_user)
     return None
 
+
 def get_user_by_login(db, login):
-    return db.scalar(
-        select(User).where(
-            or_(
-                User.username == login,
-                User.email == login
-            )
-        )
-    )
+    return db.scalar(select(User).where(or_(User.username == login, User.email == login)))
+
 
 def require_user() -> User:
     """Get current logged-in user.
@@ -199,6 +190,7 @@ def user_session_timeout() -> None:
 
 # ============================== User Management ============================== #
 
+
 def forgot_password(db: Session, login: str) -> None:
 
     user = get_user_by_login(db, login)
@@ -211,16 +203,16 @@ def forgot_password(db: Session, login: str) -> None:
 
     reset_link = f"{config.APP_URL}/account/reset_password/{token}"
 
-
     send_email(
         db=db,
-        to=[user.email], 
+        to=[user.email],
         subject="Reset your password",
         body=f"""
         Click the link to reset your password:
         {reset_link}
         """,
     )
+
 
 def reset_password(db: Session, access_token: str, password: str) -> None:
     user = db.scalar(select(User).filter_by(access_token=access_token.strip()))
@@ -231,8 +223,7 @@ def reset_password(db: Session, access_token: str, password: str) -> None:
     log.i(f"Reset password for {user}")
 
     user.set_password(password)
-    user.access_token = None  
-
+    user.access_token = None
 
 
 # def change_password(user: User, new_password: str) -> None:

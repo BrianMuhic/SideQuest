@@ -140,7 +140,7 @@ def _commons_thumb_from_title(file_title: str) -> str | None:
             },
             timeout=5,
         )
-        pages = data.get("query", {}).get("pages", {})
+        pages = data.get("query", {}).get("pages", {})  # type: ignore
         for page in pages.values():
             imageinfo = page.get("imageinfo", [])
             if imageinfo:
@@ -250,8 +250,8 @@ def _google_photo_url_for_stop(stop: dict) -> str | None:
     photo_name = _google_place_photo_name(
         str(stop.get("name", "")),
         str(stop.get("address", "")),
-        float(stop.get("lat")),
-        float(stop.get("lon")),
+        float(stop.get("lat")),  # type: ignore
+        float(stop.get("lon")),  # type: ignore
     )
 
     if not photo_name:
@@ -483,7 +483,7 @@ def _get_route(start_lon: float, start_lat: float, end_lon: float, end_lat: floa
         f"{config.OSRM_URL}/{start_lon},{start_lat};{end_lon},{end_lat}",
         {"overview": "full", "geometries": "geojson", "steps": "false"},
     )
-    routes = route_data.get("routes", [])
+    routes = route_data.get("routes", [])  # type: ignore
     return routes[0] if routes else None
 
 
@@ -554,7 +554,7 @@ def get_route_legs(waypoints: list[dict]) -> dict:
         f"{config.OSRM_URL}/{coords}",
         {"overview": "full", "geometries": "geojson", "steps": "false"},
     )
-    routes = route_data.get("routes", [])
+    routes = route_data.get("routes", [])  # type: ignore
 
     if not routes:
         log.w("No route found for waypoints")

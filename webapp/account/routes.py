@@ -1,11 +1,12 @@
+from flask import render_template
 from flask.typing import ResponseReturnValue
 from sqlalchemy.orm import Session
 
 from account import service
 from account.forms import (
+    ForgotPasswordForm,
     InitialRegistrationForm,
     LoginForm,
-    ForgotPasswordForm,
     ResetPasswordForm,
 )
 from account.service import guest_required
@@ -55,6 +56,7 @@ def register(db: Session) -> ResponseReturnValue:
         return {"username": user.username}
     return form.errors, form.status_code
 
+
 @bp.post("/forgot-password")
 @guest_required
 @use_db
@@ -66,6 +68,7 @@ def forgot_password_route(db: Session):
         return {"status": "ok"}
 
     return form.errors, form.status_code
+
 
 @bp.post("/reset_password/<access_token>")
 @guest_required
@@ -79,13 +82,11 @@ def reset_password_route(db: Session, access_token: str):
 
     return form.errors, form.status_code
 
-from flask import render_template
 
 @bp.get("/reset_password/<access_token>")
 @guest_required
 def reset_password_page(access_token: str):
     return render_template("reset_password.html", token=access_token)
-
 
 
 # @bp.get_post("/edit-registration")
@@ -124,4 +125,3 @@ def reset_password_page(access_token: str):
 #         title="Change Password",
 #         form=form,
 #     )
-
