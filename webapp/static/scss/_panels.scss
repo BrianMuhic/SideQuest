@@ -449,3 +449,18 @@ body.authenticated .auth-only {
 	// Suggestions dropdown: clamp to viewport width on small screens
 	.suggestions-list { max-width: calc(100vw - 2rem); }
 }
+
+// Loading indicator after quick results and before the rest of detours are loaded.
+
+.loading-more-indicator {
+    text-align: center;
+    padding: 1rem;
+    color: $text-muted;
+    font-size: 0.9rem;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
