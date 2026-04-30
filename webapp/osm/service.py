@@ -507,8 +507,8 @@ def _enrich_and_filter_stops(
             f"{table_url}/{coords}",
             {"annotations": "duration,distance"},
         )
-        durations = data.get("durations", [])
-        distances = data.get("distances", [])
+        durations = data.get("durations", [])  # type: ignore
+        distances = data.get("distances", [])  # type: ignore
     except Exception as e:
         log.w(f"OSRM table call failed: {e}")
         return stops

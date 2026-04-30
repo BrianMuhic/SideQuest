@@ -97,8 +97,9 @@ class ForgotPasswordForm(BaseForm):
     )
 
     def export(self) -> str:
-        return self.username.data
-    
+        return self.username.data  # type: ignore
+
+
 class ResetPasswordForm(BaseForm):
     password = PasswordField(
         "Password",
@@ -113,4 +114,4 @@ class ResetPasswordForm(BaseForm):
     )
 
     def export(self) -> str:
-        return self.password.data
+        return self.password.data  # type: ignore
