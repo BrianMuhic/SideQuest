@@ -10,7 +10,7 @@ A Flask web app that suggests road trip stops and detours based on a route and u
 2. **Build Route** - enter start and destination, preview on map
 3. **Set Preferences** - choose stop categories and allowed detour time
 4. **Find Stops** - view suggested stops along the route ranked by proximity
-5. **Export Route** - save or export to Google Maps, Apple Maps, GPX *(planned)*
+5. **Export Route** - save or export to Google Maps, Apple Maps
 
 ---
 
@@ -30,6 +30,18 @@ just run
 ```
 
 Static assets (SCSS → CSS, JS bundling) are compiled automatically on startup.
+
+**Optional: Run services locally (recommended for development)**
+
+```bash
+# Local routing engine (faster, no rate limits)
+just osrm-container
+
+# Local POI database (no rate limits on Overpass queries)
+just overpass-container
+```
+
+These run OSRM and Overpass locally via Docker. First run downloads Virginia OSM data and may take several minutes to initialize.
 
 **Common commands:**
 
@@ -85,8 +97,29 @@ Each feature lives in its own module (`account/`, `osm/`, etc.) with a consisten
 | OSRM (`router.project-osrm.org`) | Routing - driving route between two points |
 | Overpass (`overpass-api.de`) | POI discovery - stops near route coordinates |
 | Wikimedia Commons | Stop photos via `wikimedia_commons` OSM tags |
+| Google Places API (`places.googleapis.com`) | Stop photos (optional, requires API key) |
+| OSRM Table API (`router.project-osrm.org`) | Detour time calculation - driving time matrix for all stops in one call |
 
 ---
+
+## Environment Variables
+
+Create a `.env` file in the project root. Required variables:
+
+| Variable | Description |
+|---|---|
+| `SECRET_KEY` | Flask session secret — any random string |
+| `MAIL_DEFAULT_SENDER` | From address for password reset emails |
+| `MAIL_USERNAME` | Mailgun SMTP username |
+| `MAIL_PASSWORD` | Mailgun SMTP password |
+
+Optional:
+
+| Variable | Description |
+|---|---|
+| `GOOGLE_PLACES_API_KEY` | Enables Google Photos on stop cards |
+| `OVERPASS_URL` | Override Overpass endpoint (default: public API) |
+| `OSRM_URL` | Override OSRM endpoint (default: public demo server) |
 
 ## Style Guide
 
