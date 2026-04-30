@@ -228,24 +228,19 @@ function initApp() {
     });
 
     function buildSavedRouteMapLinks(savedRoute) {
-        var start = savedRoute.start.lat + ',' + savedRoute.start.lon;
         var stops = Array.isArray(savedRoute.stops) ? savedRoute.stops : [];
 
-        var appleDestinations = stops.map(function(stop) {
-            return stop.lat + ',' + stop.lon;
-        });
-        appleDestinations.push(savedRoute.end.lat + ',' + savedRoute.end.lon);
-        var appleDaddr = appleDestinations.join('+to:');
+        var saddr = 'source=' + savedRoute.start.lat + '%2C' + savedRoute.start.lon;
+        var waddr = '&waypoint=' + stops.map(function(s) { return s.lat + '%2C' + s.lon; }).join('&waypoint=');
+        var daddr = '&destination=' + savedRoute.end.lat + '%2C' + savedRoute.end.lon;
+        var appleUrl = 'https://maps.apple.com/directions?' + saddr + waddr + daddr + '&mode=driving';
 
-        var googleDestination = savedRoute.end.lat + ',' + savedRoute.end.lon;
-        var googleWaypoints = stops.map(function(stop) {
-            return stop.lat + ',' + stop.lon;
-        }).join('|');
+        var googleOrigin = savedRoute.start.lat + ',' + savedRoute.start.lon;
+        var googleDest = savedRoute.end.lat + ',' + savedRoute.end.lon;
+        var waypoints = stops.map(function(s) { return s.lat + ',' + s.lon; }).join('|');
+        var googleUrl = 'https://www.google.com/maps/dir/?api=1&origin=' + googleOrigin + '&destination=' + googleDest + '&waypoints=' + waypoints + '&travelmode=driving';
 
-        return {
-            apple: 'https://maps.apple.com/?saddr=' + start + '&daddr=' + appleDaddr + '&dirflg=d',
-            google: 'https://www.google.com/maps/dir/?api=1&origin=' + start + '&destination=' + googleDestination + '&waypoints=' + googleWaypoints + '&travelmode=driving'
-        };
+        return { apple: appleUrl, google: googleUrl };
     }
 
     function renderSavedRoutes(routes) {
