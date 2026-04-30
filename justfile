@@ -111,6 +111,7 @@ db-container:
         exit 1
     fi
     mkdir -p ./local/mysql
+    $cmd rm -f mariadb
     $CMD run --detach --name mariadb -v ./local/mysql:/var/lib/mysql:Z -p 3306:3306 -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 mariadb:latest
     echo "MariaDB server started (user='root', password='', port=3306)"
     echo "To stop the server, run '$CMD rm -f mariadb'"
@@ -142,10 +143,16 @@ osrm-container:
         echo "Customizing..."
         $CMD run -t -v "${PWD}/local/osrm:/data" osrm/osrm-backend osrm-customize /data/virginia-latest.osrm
     fi
+    $CMD rm -f osrm
     $CMD run --detach --name osrm -p 5001:5000 -v "${PWD}/local/osrm:/data" osrm/osrm-backend osrm-routed --algorithm mld /data/virginia-latest.osrm
     echo "OSRM server started on port 5001"
     echo "To stop the server, run '$CMD rm -f osrm'"
-    echo "Remember to set OSRM_URL=\"http://127.0.0.1:5001/route/v1/driving\" in your .env"
+    if ! grep -q "^OSRM_URL=" .env 2>/dev/null; then
+        echo 'OSRM_URL="http://127.0.0.1:5001/route/v1/driving"' >> .env
+        echo "Added OSRM_URL to .env"
+    else
+        echo "OSRM_URL already set in .env"
+    fi
 
 
 # Run Overpass API via container (Virginia data)
@@ -174,7 +181,7 @@ overpass-container:
             wiktorn/overpass-api \
             -c "osmium cat -o /data/planet.osm.bz2 /data/virginia-latest.osm.pbf"
     fi
-    if [ ! -f ./local/overpass/osm_base_version ]; then
+    if [ ! -f ./local/overpass/init_done ]; then
         echo "Initializing Overpass database (this may take several minutes)..."
         $CMD run --rm -i \
             -e OVERPASS_MODE=init \
@@ -185,10 +192,16 @@ overpass-container:
             -v "${PWD}/local/planet.osm.bz2:/osm/planet.osm.bz2:ro" \
             wiktorn/overpass-api
     fi
+    $CMD rm -f overpass
     $CMD run --detach --name overpass -v "${PWD}/local/overpass:/db" -p 5002:80 wiktorn/overpass-api
     echo "Overpass API started on port 5002"
     echo "To stop the server, run '$CMD rm -f overpass'"
-    echo "Remember to set OVERPASS_URL=\"http://127.0.0.1:5002/api/interpreter\" in your .env"
+    if ! grep -q "^OVERPASS_URL=" .env 2>/dev/null; then
+        echo 'OVERPASS_URL="http://127.0.0.1:5002/api/interpreter"' >> .env
+        echo "Added OVERPASS_URL to .env"
+    else
+        echo "OVERPASS_URL already set in .env"
+    fi
 
 
 # ==================== Setup ==================== #
