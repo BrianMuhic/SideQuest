@@ -154,7 +154,7 @@ def get_engine() -> Engine:
 
 def _log_slow_transactions(start_time: float) -> None:
     """Log slow database transactions."""
-    from webapp.config import config
+    from config import config
 
     dt = default_timer() - start_time
     if dt > config.DB_TIME_WARN_THRESHOLD:

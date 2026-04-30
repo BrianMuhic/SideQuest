@@ -80,7 +80,7 @@ class CustomFormatter(logging.Formatter):
         super().__init__(self.LOG_FORMAT, self.DATE_FORMAT, style="{")
 
     def formatTime(self, record: LogRecord, datefmt: str | None = None) -> str:  # noqa: N802
-        from webapp.constant import LOCAL_ZONEINFO
+        from constant import LOCAL_ZONEINFO
 
         dt = datetime.fromtimestamp(record.created, tz=LOCAL_ZONEINFO)
 

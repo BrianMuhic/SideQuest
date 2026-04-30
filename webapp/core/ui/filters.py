@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from jinja2 import Environment
 
-from webapp.config import config
+from config import config
 
 
 def add_template_filters(jinja_env: Environment) -> None:

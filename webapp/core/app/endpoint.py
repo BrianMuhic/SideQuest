@@ -24,7 +24,7 @@ class Endpoint:
 
     def external_url(self, **kwargs: Any) -> str:
         """Generate a URL for this endpoint."""
-        from webapp.config import config
+        from config import config
 
         return f"{config.APP_URL}{self.url(**kwargs)}"
 
