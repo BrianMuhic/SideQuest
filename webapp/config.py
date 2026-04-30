@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     MAIL_USE_TLS: bool = False
     MAIL_USE_SSL: bool = True
 
+    # Cache
+    CACHE_DIR: str = "/tmp/sidequest_cache"
+    CACHE_DISABLED: bool = False
+
     # OSM
     NOMINATIM_URL: str = "https://nominatim.openstreetmap.org/search"
     OVERPASS_URL: str = "https://overpass-api.de/api/interpreter"

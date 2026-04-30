@@ -1,4 +1,6 @@
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor
 from math import atan2, cos, radians, sin, sqrt
 from typing import Any
 from urllib.parse import quote
@@ -8,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from config import config
 from core.service.logger import get_logger
+from osm import cache
 from osm.models import SavedRoute
 
 log = get_logger()
@@ -30,6 +33,8 @@ _SCENIC_FILTERS: list[tuple[str, str]] = [
     ("highway", "trailhead"),
 ]
 
+_CLAUSE_SPLIT_THRESHOLD = 80
+
 _GOOGLE_PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 _GOOGLE_PLACE_PHOTO_URL = "https://places.googleapis.com/v1"
 _google_photo_cache: dict[str, str | None] = {}
@@ -46,14 +51,30 @@ def _get_json(url: str, params: dict | None = None, timeout: int = 120) -> dict 
 
 
 def _post_overpass(query: str) -> dict:
+    key = cache.make_key("overpass", query)
+    cached = cache.get(key)
+    if cached is not cache.MISS:
+        return cached
     response = requests.post(
         config.OVERPASS_URL,
         data=query,
-        timeout=120,
+        timeout=35,
         headers={"User-Agent": config.USER_AGENT},
     )
     response.raise_for_status()
-    return response.json()
+    data = response.json()
+    cache.set(key, data, ttl=86400)
+    return data
+
+
+def _round_coords(coords: str) -> str:
+    """Round each lon,lat pair in a semicolon-separated coords string to 5 decimal places."""
+    parts = coords.split(";")
+    rounded = []
+    for p in parts:
+        lon_s, lat_s = p.split(",")
+        rounded.append(f"{round(float(lon_s), 5)},{round(float(lat_s), 5)}")
+    return ";".join(rounded)
 
 
 def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -202,7 +223,7 @@ def _google_place_photo_name(stop_name: str, address: str, lat: float, lon: floa
             _GOOGLE_PLACES_TEXT_SEARCH_URL,
             json=payload,
             headers=headers,
-            timeout=8,
+            timeout=3,
         )
         response.raise_for_status()
 
@@ -253,6 +274,11 @@ def _google_photo_url_for_stop(stop: dict) -> str | None:
         return None
 
     return _google_photo_proxy_url(photo_name)
+
+
+def get_stop_photo_url(name: str, address: str, lat: float, lon: float) -> str | None:
+    stop = {"name": name, "address": address, "lat": lat, "lon": lon}
+    return _google_photo_url_for_stop(stop)
 
 
 def _attach_google_photos(stops: list[dict]) -> list[dict]:
@@ -383,6 +409,79 @@ def _process_overpass_element(
     return key, stop
 
 
+def _overpass_query_string(
+    pts: list[list[float]], tag_filters: list[tuple[str, str]], radius: int
+) -> str:
+    clauses = [_overpass_clause(k, v, lat, lon, radius) for lon, lat in pts for k, v in tag_filters]
+    return f"[out:json][timeout:25];\n(\n{''.join(clauses)}\n);\nout center tags 500;\n"
+
+
+def _fetch_overpass_elements(
+    query_points: list[list[float]], tag_filters: list[tuple[str, str]], radius: int
+) -> list[dict]:
+    clauses_count = len(query_points) * len(tag_filters)
+    t0 = time.monotonic()
+
+    if clauses_count <= _CLAUSE_SPLIT_THRESHOLD:
+        try:
+            log.d(f"Overpass query: {clauses_count} clauses")
+            result = _post_overpass(_overpass_query_string(query_points, tag_filters, radius))
+            log.d(
+                f"Overpass returned {len(result.get('elements', []))} elements in {time.monotonic() - t0:.2f}s"
+            )
+            return result.get("elements", [])
+        except Exception as e:
+            log.w(f"Overpass query failed: {e}")
+            return []
+
+    num_splits = min(3, (clauses_count + _CLAUSE_SPLIT_THRESHOLD - 1) // _CLAUSE_SPLIT_THRESHOLD)
+    pts_per = (len(query_points) + num_splits - 1) // num_splits
+    groups = [query_points[i : i + pts_per] for i in range(0, len(query_points), pts_per)]
+    log.d(f"Overpass split: {clauses_count} clauses -> {len(groups)} parallel sub-queries")
+
+    elements: list[dict] = []
+    with ThreadPoolExecutor(max_workers=len(groups)) as pool:
+        futures = [
+            pool.submit(_post_overpass, _overpass_query_string(g, tag_filters, radius))
+            for g in groups
+        ]
+        for fut in futures:
+            try:
+                elements.extend(fut.result().get("elements", []))
+            except Exception as e:
+                log.w(f"Overpass sub-query failed: {e}")
+
+    log.d(f"Overpass parallel returned {len(elements)} elements in {time.monotonic() - t0:.2f}s")
+    return elements
+
+
+def _resolve_full_query_points(
+    sampled_points: list[list[float]], tag_filters: list[tuple[str, str]], radius: int
+) -> tuple[list[list[float]], list[dict]]:
+    max_points = max(8, min(20, 32 // max(1, len(tag_filters) // 4)))
+    if len(sampled_points) > max_points:
+        stride = (len(sampled_points) - 1) / (max_points - 1)
+        query_points: list[list[float]] = [
+            sampled_points[round(i * stride)] for i in range(max_points)
+        ]
+    else:
+        query_points = sampled_points
+
+    quick_query = _overpass_query_string(sampled_points[:2], tag_filters, radius)
+    cached = cache.get(cache.make_key("overpass", quick_query))
+    if cached is cache.MISS:
+        return query_points, []
+
+    prefetched: list[dict] = cached.get("elements", [])
+    quick_pts = {(pt[0], pt[1]) for pt in sampled_points[:2]}
+    remaining = [pt for pt in query_points if (pt[0], pt[1]) not in quick_pts]
+    log.d(
+        f"Reusing {len(prefetched)} elements from quick-phase cache; "
+        f"{len(remaining)} points remain for full query"
+    )
+    return remaining, prefetched
+
+
 def _find_stops_along_route(
     route_geometry: dict,
     stop_categories: list[str],
@@ -402,34 +501,24 @@ def _find_stops_along_route(
         return []
 
     if quick:
-        query_points = sampled_points[:2]
+        query_points: list[list[float]] = sampled_points[:2]
+        prefetched_elements: list[dict] = []
     else:
-        max_points = max(8, min(20, 32 // max(1, len(tag_filters) // 4)))
-        if len(sampled_points) > max_points:
-            stride = (len(sampled_points) - 1) / (max_points - 1)
-            query_points = [sampled_points[round(i * stride)] for i in range(max_points)]
-        else:
-            query_points = sampled_points
+        query_points, prefetched_elements = _resolve_full_query_points(
+            sampled_points, tag_filters, detour_radius_meters
+        )
 
-    clauses = [
-        _overpass_clause(key, value, lat, lon, detour_radius_meters)
-        for lon, lat in query_points
-        for key, value in tag_filters
-    ]
+    if query_points:
+        new_elements = _fetch_overpass_elements(query_points, tag_filters, detour_radius_meters)
+    else:
+        log.d("All points covered by quick-phase cache; skipping Overpass")
+        new_elements = []
 
-    query = f"[out:json][timeout:60];\n(\n{''.join(clauses)}\n);\nout center tags 500;\n"
-
-    try:
-        log.d(f"Overpass query: {len(clauses)} clauses, {len(query)} chars")
-        result = _post_overpass(query)
-        log.d(f"Overpass returned {len(result.get('elements', []))} elements")
-    except Exception as e:
-        log.w(f"Overpass query failed: {e}")
-        result = {"elements": []}
+    all_elements = prefetched_elements + new_elements
 
     results_by_key: dict[str, dict] = {}
 
-    for element in result.get("elements", []):
+    for element in all_elements:
         processed = _process_overpass_element(element, sampled_points, stop_categories)
 
         if processed is None or processed[0] in results_by_key:
@@ -505,11 +594,16 @@ def _enrich_and_filter_stops(
 
     table_url = config.OSRM_URL.replace("/route/v1/driving", "/table/v1/driving")
 
+    table_key = cache.make_key("osrm_table", _round_coords(coords))
+
     try:
-        data = _get_json(
-            f"{table_url}/{coords}",
-            {"annotations": "duration,distance"},
-        )
+        data = cache.get(table_key)
+        if data is cache.MISS:
+            data = _get_json(
+                f"{table_url}/{coords}",
+                {"annotations": "duration,distance"},
+            )
+            cache.set(table_key, data, ttl=86400)
         durations = data.get("durations", [])  # type: ignore
         distances = data.get("distances", [])  # type: ignore
     except Exception as e:
@@ -550,20 +644,35 @@ def _enrich_and_filter_stops(
 
 
 def _geocode(location: str) -> dict | None:
+    key = cache.make_key("geocode", location.lower().strip())
+    cached = cache.get(key)
+    if cached is not cache.MISS:
+        return cached
     results = _get_json(
         config.NOMINATIM_URL,
         {"q": location, "format": "jsonv2", "limit": 1, "countrycodes": "us"},
     )
-    return results[0] if results else None
+    result = results[0] if results else None
+    cache.set(key, result, ttl=604800)
+    return result
 
 
 def _get_route(start_lon: float, start_lat: float, end_lon: float, end_lat: float) -> dict | None:
+    key = cache.make_key(
+        "osrm_route",
+        f"{round(start_lon, 5)},{round(start_lat, 5)},{round(end_lon, 5)},{round(end_lat, 5)}",
+    )
+    cached = cache.get(key)
+    if cached is not cache.MISS:
+        return cached
     route_data = _get_json(
         f"{config.OSRM_URL}/{start_lon},{start_lat};{end_lon},{end_lat}",
         {"overview": "full", "geometries": "geojson", "steps": "false"},
     )
     routes = route_data.get("routes", [])  # type: ignore
-    return routes[0] if routes else None
+    result = routes[0] if routes else None
+    cache.set(key, result, ttl=86400)
+    return result
 
 
 def friendly_detour_text(hours_value: int, minutes_value: int) -> str:
@@ -617,8 +726,6 @@ def find_stops(
         base_distance_meters,
         total_detour_minutes,
     )
-
-    stops = _attach_google_photos(stops)
 
     log.i(f"Found {len(stops)} stops: {start_location!r} -> {end_location!r}")
     return stops, route["geometry"]

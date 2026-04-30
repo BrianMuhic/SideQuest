@@ -102,18 +102,7 @@ Each feature lives in its own module (`account/`, `osm/`, etc.) with a consisten
 
 ---
 
-## Environment Variables
-
-Create a `.env` file in the project root. Required variables:
-
-| Variable | Description |
-|---|---|
-| `SECRET_KEY` | Flask session secret — any random string |
-| `MAIL_DEFAULT_SENDER` | From address for password reset emails |
-| `MAIL_USERNAME` | Mailgun SMTP username |
-| `MAIL_PASSWORD` | Mailgun SMTP password |
-
-Optional:
+## Environment Variables (Optional)
 
 | Variable | Description |
 |---|---|

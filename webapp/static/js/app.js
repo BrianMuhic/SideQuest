@@ -442,7 +442,7 @@ function initApp() {
         }
 
         data.stops.forEach(function(stop) {
-            $feed.append(buildStopCard(stop, function(addedStop) {
+            var $card = buildStopCard(stop, function(addedStop) {
                 selectedStops.push(addedStop);
 
                 const marker = L.marker([addedStop.lat, addedStop.lon])
@@ -451,7 +451,9 @@ function initApp() {
 
                 stopMarkers[addedStop.id] = marker;
                 renderSelectedStops();
-            }));
+            });
+            $feed.append($card);
+            lazyLoadStopPhoto(stop, $card);
         });
 
         renderSelectedStops();
@@ -473,7 +475,7 @@ function initApp() {
 
         data.stops.forEach(function(stop) {
             if (existingIds.has(stop.id)) return;
-            $feed.append(buildStopCard(stop, function(addedStop) {
+            var $card = buildStopCard(stop, function(addedStop) {
                 selectedStops.push(addedStop);
 
                 const marker = L.marker([addedStop.lat, addedStop.lon])
@@ -482,7 +484,9 @@ function initApp() {
 
                 stopMarkers[addedStop.id] = marker;
                 renderSelectedStops();
-            }));
+            });
+            $feed.append($card);
+            lazyLoadStopPhoto(stop, $card);
         });
     }
 
