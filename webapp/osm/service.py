@@ -1,4 +1,3 @@
-import os
 import re
 from math import atan2, cos, radians, sin, sqrt
 from typing import Any
@@ -158,18 +157,12 @@ def _photo_url_from_tags(tags: dict) -> str | None:
     return None
 
 
-def _google_places_api_key() -> str:
-    return os.environ.get("GOOGLE_PLACES_API_KEY", "").strip()
-
-
 def _google_photo_proxy_url(photo_name: str) -> str:
     return "/api/place-photo?name=" + quote(photo_name, safe="")
 
 
 def _google_place_photo_name(stop_name: str, address: str, lat: float, lon: float) -> str | None:
-    api_key = _google_places_api_key()
-
-    if not api_key:
+    if not config.GOOGLE_PLACES_API_KEY:
         return None
 
     cache_key = f"{stop_name}|{address}|{round(lat, 4)}|{round(lon, 4)}"
@@ -198,7 +191,7 @@ def _google_place_photo_name(stop_name: str, address: str, lat: float, lon: floa
 
     headers = {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": api_key,
+        "X-Goog-Api-Key": config.GOOGLE_PLACES_API_KEY,
         "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.location,places.photos.name",
     }
 
@@ -261,7 +254,7 @@ def _google_photo_url_for_stop(stop: dict) -> str | None:
 
 
 def _attach_google_photos(stops: list[dict]) -> list[dict]:
-    if not _google_places_api_key():
+    if not config.GOOGLE_PLACES_API_KEY:
         return stops
 
     for stop in stops:
@@ -277,9 +270,7 @@ def _attach_google_photos(stops: list[dict]) -> list[dict]:
 
 
 def get_google_place_photo(photo_name: str) -> tuple[bytes, str]:
-    api_key = _google_places_api_key()
-
-    if not api_key:
+    if not config.GOOGLE_PLACES_API_KEY:
         raise ValueError("Google Places API key is not configured.")
 
     clean_name = photo_name.strip()
@@ -291,7 +282,7 @@ def get_google_place_photo(photo_name: str) -> tuple[bytes, str]:
         f"{_GOOGLE_PLACE_PHOTO_URL}/{clean_name}/media",
         params={
             "maxWidthPx": 900,
-            "key": api_key,
+            "key": config.GOOGLE_PLACES_API_KEY,
         },
         timeout=15,
     )
