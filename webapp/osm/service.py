@@ -113,6 +113,8 @@ def _category_label(tags: dict) -> str:
         or tags.get("protect_class") in {"2", "3", "5"}
         or tags.get("tourism") in {"viewpoint", "attraction"}
         or tags.get("leisure") in {"nature_reserve"}
+        or tags.get("natural") == "peak"
+        or tags.get("highway") == "trailhead"
     ):
         return "Scenic / Parks"
     return "Stop"
@@ -453,9 +455,19 @@ def _find_stops_along_route(
     per_segment_quota = 14
     selected: list[dict] = []
 
+    log.d(f"Using {len(query_points)} query points")
+    for i, bucket in enumerate(stops_by_segment):
+        log.d(f"Bucket {i}: {len(bucket)} stops — {', '.join(s['category'] for s in bucket[:5])}")
+
+    log.d(f"Overpass found {len(results_by_key)} unique named stops")
+
     for bucket in stops_by_segment:
         bucket.sort(key=lambda s: (s["distance_off_route_miles"], s["name"].lower()))
         selected.extend(bucket[:per_segment_quota])
+
+    log.d(
+        f"Selected {len(selected)} stops — categories: {dict((c, sum(1 for s in selected if s['category'] == c)) for c in set(s['category'] for s in selected))}"
+    )
 
     def _route_position_index(stop: dict) -> int:
         return min(
@@ -504,6 +516,10 @@ def _enrich_and_filter_stops(
         log.w(f"OSRM table call failed: {e}")
         return stops
 
+    log.d(
+        f"OSRM table: {len(stops)} stops, matrix {len(durations)}x{len(durations[0]) if durations else 0}"
+    )
+
     allowed_seconds = allowed_detour_minutes * 60
     filtered = []
 
@@ -522,6 +538,13 @@ def _enrich_and_filter_stops(
         stop["detour_minutes"] = max(0, round(actual_extra_seconds / 60))
         stop["detour_miles"] = max(0.0, actual_extra_miles)
         filtered.append(stop)
+
+    if filtered:
+        log.d(
+            f"Detour range: {min(s.get('detour_minutes') or 0 for s in filtered)}-{max(s.get('detour_minutes') or 0 for s in filtered)} min, kept {len(filtered)} of {len(stops)}"
+        )
+    else:
+        log.d(f"Detour filter removed all {len(stops)} stops")
 
     return filtered
 
